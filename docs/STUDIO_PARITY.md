@@ -2,7 +2,7 @@
 owner: @esengine
 backup: @SivanCola
 status: active
-reviewed: 2026-10-08
+reviewed: 2026-10-14
 ---
 
 # Studio parity with the 1.x desktop app
@@ -96,6 +96,7 @@ Checked against `studio` at `d779d89bc` on 2026-10-08.
 
 | Feature | Status | Studio location |
 | --- | --- | --- |
+| Study Tutor (plans, quizzes, review, notes, knowledge base) | Have | `ui/tutor/` sheet opened from the rail button (`tutor.open`); [Tutor guide](./TUTOR.md) |
 | Per-model display aliases | Have | Model service settings and chat picker; [configuration and scope](MODEL_DISPLAY_ALIASES.md); #11774 |
 | Icon rail with three display modes | Have | #12377, #12428; sidebar footer entries appear only when icon navigation is hidden (#12478) |
 | Usage, feedback, account and settings footer / 用量、反馈、账号与设置底部入口 | Have differently | `ui/Nav.tsx` when navigation is visible; `ui/Sidebar.tsx` otherwise, including the narrow-window drawer. 导航可见时使用图标栏入口，隐藏时保留侧栏入口 (#12478) |

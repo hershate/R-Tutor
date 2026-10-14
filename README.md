@@ -70,6 +70,7 @@ You pick the model: a DeepSeek preset is built in, any OpenAI-compatible service
 ## What you get
 
 - **Read, edit, run.** It reads code, edits files and runs tests and commands, all inside your project folder.
+- **Study Tutor.** Turn material and a goal into a staged study plan: scheduled units, quizzes with a spaced-review wrong-answer deck, notes, a searchable knowledge base, and exports to Markdown, calendar, Anki and HTML slides. See the [Tutor guide](./docs/TUTOR.md).
 - **Permission levels.** Have it ask every time, or let everyday actions run on their own; your forbid rules always hold. To see the approach first, use plan mode: it starts work only once you approve.
 - **Rewind.** A file is saved before it changes, so you can rewind by conversation turn without touching your git history. Only files its edit tools changed are covered, not what a shell command did.
 
@@ -241,7 +242,8 @@ For advanced CLI usage and configuration, see the **[CLI reference](./docs/CLI.m
 
 - **Getting started:** [Guide](./docs/GUIDE.md) · [CLI reference](./docs/CLI.md) ·
   [Configuration paths](./docs/CONFIG_PATHS.md) · [ACP editor integration](./docs/ACP.md)
-- **Features & troubleshooting:** [Subagent profiles](./docs/SUBAGENT_PROFILES.md) ·
+- **Features & troubleshooting:** [Tutor](./docs/TUTOR.md) ·
+  [Subagent profiles](./docs/SUBAGENT_PROFILES.md) ·
   [Context Engine v2](./docs/SESSION_MEMORY_RETRIEVAL.md) ·
   [Capability diagnostics](./docs/CAPABILITY_DIAGNOSTICS.md) ·
   [Recovery and updates](./docs/RECOVERY.md) ·

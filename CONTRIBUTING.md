@@ -25,6 +25,7 @@ go test ./...              # runs the full test suite
 |-----------|---------|
 | `cmd/reasonix` | CLI entry point |
 | `internal/runtime/agent` | Agent loop, session, coordinator |
+| `internal/runtime/tutor` | Study tutor: plans, quizzes, review, notes, knowledge base ([docs/TUTOR.md](docs/TUTOR.md)) |
 | `internal/frontend/cli` | TUI, subcommands, setup wizard |
 | `internal/session/control` | Transport-agnostic controller |
 | `internal/contract/config` | TOML configuration loading |
@@ -45,10 +46,11 @@ go test ./...              # runs the full test suite
 ### Dependency direction
 
 ```
-cli → {agent, plugin, config} → {tool, provider}
+frontend → assembly → session → runtime → {tools, ext, model, platform} → {contract, base}
 ```
 
-Built-in subpackages import their parent to self-register via `init()`.
+`safety` and `state` are cross-cutting layers near the bottom. Built-in
+subpackages import their parent to self-register via `init()`.
 Parents never import children.
 
 ## Development workflow

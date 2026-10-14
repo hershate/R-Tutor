@@ -27,37 +27,36 @@ README is bilingual (`README.md` English + `README.zh-CN.md`).
 
 ```
 reasonix/
-├── go.mod / go.sum          # module reasonix; require BurntSushi/toml
-├── Makefile                 # build / cross / vet / fmt / test
+├── go.mod / go.sum               # module reasonix
+├── Makefile                      # build / cross / lint / check / studio
 ├── README.md / README.zh-CN.md
 ├── reasonix.example.toml         # sample config
-├── docs/SPEC.md             # this file
-├── cmd/reasonix/main.go          # entry; blank-imports built-in providers/tools
-├── cmd/reasonix-plugin-example/  # reference MCP stdio plugin (a runnable example)
+├── docs/                         # guides, contracts, runbooks (SPEC.md is this file)
+├── cmd/                          # entry points: reasonix CLI, Studio host, plugin example, release tooling
+├── desktop/                      # nested Go module: Electron shell + frontend-next SPA
+├── sdk/go/                       # public Go SDK for extension authors
 └── internal/
-    ├── cli/                 # subcommand routing, flags, assembly, exit codes
-    ├── config/              # TOML loading (flag > project > user > defaults)
-    ├── provider/            # Provider interface + types + kind→factory registry
-    │   └── openai/          # OpenAI-compatible impl; init() registers "openai"
-    ├── tool/                # Tool interface + Registry
-    │   └── builtin/         # read_file/write_file/edit_file/move_file/bash/ls/glob/grep
-    ├── permission/          # per-call Policy: allow/ask/deny rules → Decision
-    ├── command/             # custom slash commands loaded from .reasonix/commands/*.md
-    ├── plugin/              # stdio JSON-RPC (MCP) client; adapts remote tools
-    ├── remote/              # SSH transport for the Remote-SSH module
-    │   ├── forward/         # -L / -R port-forward lifecycle
-    │   ├── sftpfs/          # SFTP file layer (quarantines pkg/sftp)
-    │   └── bootstrap/       # detached `reasonix serve` bootstrap over SSH
-    └── agent/               # Session + harness loop
+    ├── base/                     # shared primitives
+    ├── contract/                 # cross-layer types: config, provider, events, pricing, surfaces
+    ├── safety/                   # redaction and credential boundaries
+    ├── state/                    # durable state: sessions, stats, memory projections
+    ├── model/                    # provider clients and model routing
+    ├── platform/                 # OS platform services: update, sandbox, files
+    ├── tools/                    # tool registry and the built-in tools
+    ├── ext/                      # extensions: MCP plugins, skills, market
+    ├── runtime/                  # agent runtime subsystems (agent, guardian, tutor, …)
+    │   └── tutor/                # study-tutor subsystem: plans, quizzes, knowledge base, exports
+    ├── session/                  # conversation Session and harness-loop control
+    ├── assembly/                 # boot: wires providers, tools and the gate into one kernel
+    └── frontend/                 # frontends: cli, tui, serve (HTTP+SSE), acp, doctor, remotehost
 ```
 
-Dependency direction (acyclic): `cli → {agent, plugin, config} → {tool, provider}`.
-Built-in subpackages (`provider/openai`, `tool/builtin`) import their parent to
-self-register; parents never import children. The Remote-SSH module layers
-`cli → remote/bootstrap → remote → {remote/forward, remote/sftpfs, config,
-netclient}`; `remote` and its subpackages never import `cli`, `agent`, or
-`serve`, and all interactivity flows through callbacks (host-key / secret
-prompts) so the desktop module consumes the same surface. See §Remote below.
+Dependency direction (acyclic), verified with `go list` over `./internal/...`:
+`frontend → assembly → session → runtime → {tools, ext, model, platform} →
+{contract, base}`, with `safety` and `state` as cross-cutting layers that
+sit near the bottom and are imported by every layer above them. Registration
+flows upward through `init()` side effects (providers, tools, surfaces);
+packages never import the packages that register into them.
 
 ## 3. Core Abstractions
 

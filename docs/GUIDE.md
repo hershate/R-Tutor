@@ -17,6 +17,7 @@
 - [Environment variables](#environment-variables)
 - [Web frontend](#web-frontend)
 - [Configuration paths](./CONFIG_PATHS.md)
+- [Tutor](./TUTOR.md)
 - [Reasoning language](./REASONING_LANGUAGE.md)
 - [Task contracts and pause policy](./TASK_CONTRACT.md)
 - [Custom OpenAI-compatible providers](#custom-openai-compatible-providers)

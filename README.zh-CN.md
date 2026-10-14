@@ -68,6 +68,7 @@ Reasonix 是一个开源的 AI 编程助手。程序跑在你的电脑上；AI �
 ## 你能得到什么
 
 - **读、改、跑**：读你的项目、改文件、跑测试和命令，都在你选的项目文件夹里。
+- **学习导师**：把资料和学习目标变成分阶段的学习方案——排期单元、测验与错题间隔复习、笔记、可搜索的知识库，并可导出 Markdown、日历、Anki 牌组和 HTML 幻灯片。见[学习导师文档](./docs/TUTOR.md)。
 - **权限分档**：每次都问你，或让日常操作自动放行；你设的禁止规则始终有效。想先看方案，就开计划模式，批准后它才动手。
 - **可回退**：改文件前先存快照，按对话轮次回退，不碰 git 历史。只覆盖编辑工具改的文件，命令行命令造成的改动不在内。
 
@@ -222,7 +223,8 @@ CLI 进阶用法和详细配置见 **[CLI 命令参考](./docs/CLI.zh-CN.md)**�
 - **开始使用：** [指南](./docs/GUIDE.zh-CN.md) ·
   [CLI 命令参考](./docs/CLI.zh-CN.md) · [配置路径](./docs/CONFIG_PATHS.md) ·
   [ACP 编辑器接入](./docs/ACP.md)
-- **功能与排障：** [子智能体 Profile](./docs/SUBAGENT_PROFILES.md) ·
+- **功能与排障：** [学习导师](./docs/TUTOR.md) ·
+  [子智能体 Profile](./docs/SUBAGENT_PROFILES.md) ·
   [Context Engine v2](./docs/SESSION_MEMORY_RETRIEVAL.md) ·
   [能力诊断](./docs/CAPABILITY_DIAGNOSTICS.md) ·
   [恢复与安全模式](./docs/RECOVERY.md) ·

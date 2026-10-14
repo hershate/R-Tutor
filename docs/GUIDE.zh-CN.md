@@ -17,6 +17,7 @@
 - [环境变量](#环境变量)
 - [Web 前端](#web-前端)
 - [配置路径](./CONFIG_PATHS.md)
+- [学习导师](./TUTOR.md)
 - [日志与崩溃文件](#日志与崩溃文件)
 - [思考语言](./REASONING_LANGUAGE.md)
 - [任务合约与暂停策略](./TASK_CONTRACT.md)
