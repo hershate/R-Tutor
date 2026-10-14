@@ -444,6 +444,20 @@ func (r Roots) StatsDir() string {
 	return filepath.Join(dir, "stats")
 }
 
+// TutorDir is where the tutor's plans, sessions, materials, quizzes,
+// progress, and notes persist as JSON files. Empty if the user state dir
+// can't be resolved, in which case the tutor surface stays disabled.
+func TutorDir() string { return processRoots().TutorDir() }
+
+// TutorDir is the tutor store this binding resolves to.
+func (r Roots) TutorDir() string {
+	dir := r.userSupportDir()
+	if dir == "" {
+		return ""
+	}
+	return filepath.Join(dir, "tutor")
+}
+
 // ProjectSessionDir is the per-workspace session directory the desktop sidebar
 // lists: <state root>/projects/<slug>/sessions. Empty when either the state root
 // or workspaceRoot doesn't resolve.
