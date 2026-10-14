@@ -28,7 +28,7 @@ function draw() {
       readRemoteTree={async () => {}} reloadTree={async () => {}} adder={{ busy: false, add: noop, addPath: noop } as never}
       onOpen={async () => {}} onOpenRemote={async () => {}} onFocusPane={noop} onClosePanes={async () => {}}
       onPause={noop} onArchive={async () => {}} onRename={noop} onCollapse={noop} account={null} accountUnread="" wallet=""
-      onSettings={noop} onFeedback={noop} feedbackUnread={0} onFind={noop} onError={noop}
+      onSettings={noop} onFeedback={noop} onTutor={noop} feedbackUnread={0} onFind={noop} onError={noop}
     />,
   );
 }

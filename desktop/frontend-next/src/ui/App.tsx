@@ -27,6 +27,7 @@ import { RenameSession } from "./RenameSession";
 import { RemoteAsk } from "./RemoteAsk";
 import { useFeedbackUnread } from "./useFeedbackUnread";
 import { Feedback, type FeedbackTab } from "./Feedback";
+import { TutorSheet } from "./tutor/Tutor";
 import { usePaneForSheets } from "./usePaneForSheets";
 import { BrowserLogin } from "./BrowserLogin";
 import type { RemoteAsk as RemoteAskT, RemoteHost } from "../port/remote";
@@ -115,6 +116,7 @@ export function App({ hub }: { hub: HubPort }) {
   // false = closed, true = open at its last section, a string = open there.
   const [settings, setSettings] = useState<string | boolean>(false);
   const [feedback, setFeedback] = useState<FeedbackTab | null>(null);
+  const [tutor, setTutor] = useState(false);
   const [feedbackUnread, setFeedbackUnread] = useState(0);
   const [browser, setBrowser] = useState(false);
   const [browserAsk, setBrowserAsk] = useState(0);
@@ -603,6 +605,7 @@ export function App({ hub }: { hub: HubPort }) {
             onHome={hidePrefs}
             onRail={() => setRail((v) => !v)}
             onFeedback={() => setFeedback(feedbackEntryTab(feedbackUnread))}
+            onTutor={() => setTutor(true)}
             onNew={() => {
               hidePrefs();
               void openPane({ root: newSessionRoot }).catch(fail);
@@ -648,6 +651,7 @@ export function App({ hub }: { hub: HubPort }) {
           onSettings={showPrefs}
           onFiles={openFiles}
           onFeedback={(tab) => setFeedback(tab ?? "send")}
+          onTutor={() => setTutor(true)}
           feedbackUnread={feedbackUnread}
           onFind={openFind}
           onError={fail}
@@ -760,6 +764,8 @@ export function App({ hub }: { hub: HubPort }) {
 
         <Feedback port={machinePort} tab={feedback} onClose={() => setFeedback(null)} onError={setError} onUnread={setFeedbackUnread} />
       )}
+
+      {tutor && <TutorSheet port={machinePort} onClose={() => setTutor(false)} onError={setError} />}
 
       {settings && activePort && (
         <Boundary fallback={<SettingsUnavailable onClose={hidePrefs} />}>

@@ -33,6 +33,8 @@ interface Props {
    *  does what the rail beside it can: open or close the workspace column. */
   onRail: () => void;
   onFeedback: () => void;
+  /** Opens the study tutor sheet. */
+  onTutor: () => void;
   /** A new session in the window's folder, the same action as the sidebar's. */
   onNew: () => void;
   feedbackUnread: number;
@@ -40,7 +42,7 @@ interface Props {
   shown: boolean;
 }
 
-export function Nav({ at, onGo, onFiles, onHome, onRail, onFeedback, onNew, feedbackUnread, shown }: Props) {
+export function Nav({ at, onGo, onFiles, onHome, onRail, onFeedback, onTutor, onNew, feedbackUnread, shown }: Props) {
   const btn = ([key, label, sec, action]: [Mark, string, string | null, string?]) => (
     <button
       key={key}
@@ -66,6 +68,10 @@ export function Nav({ at, onGo, onFiles, onHome, onRail, onFeedback, onNew, feed
         {TO.map(btn)}
       </div>
       <div className="navgrp foot">
+        <button className="navbtn" data-action="tutor.open" aria-label={t("学习导师")} onClick={onTutor}>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5 14 4.9v7L8 9.5 2 11.9v-7zM8 9.5v4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>
+          <span className="navhint" role="tooltip">{t("学习导师")}</span>
+        </button>
         <button className="navbtn" data-action="feedback.open" onClick={onFeedback}>
           <StudioIcon name="feedback" aria-hidden="true" />
           <span className="navhint" role="tooltip">{t("发送反馈")}</span>

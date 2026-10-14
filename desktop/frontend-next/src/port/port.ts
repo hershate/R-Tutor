@@ -47,6 +47,15 @@ import type { Protocol, ProviderCheck, ProviderDraft, ProviderEdit, ProviderEntr
 export type { ModelEffort, ModelLimit, Protocol, ProviderCheck, ProviderDraft, ProviderEdit, ProviderEntry, ProviderModelCheck, ProviderModelCheckRequest, ProviderProbe, ProviderSetup, ProviderRemoval, ProviderPreset, ProviderPresetInstall } from "./provider";
 import type { StoragePlan, StorageQuery, StorageState } from "./storage";
 import type { FeedbackEnv, FeedbackMine, FeedbackReceipt, FeedbackReplyReceipt, FeedbackRequest } from "./feedback";
+import type {
+  TutorFrame, TutorStreamOptions, TutorLearningLog, TutorMaterialsRequest, TutorMaterialsSnapshot,
+  TutorMaterial, TutorNote, TutorNoteImportResult, TutorPlan, TutorPlanSummary, TutorPlanVersionRow,
+  TutorProgressOverview, TutorProgressRow, TutorQuizSet, TutorQuizStats, TutorReviewItem, TutorSearchResults,
+  TutorSession, TutorStatsSummary, TutorGrade, TutorUsageSummary, TutorWrongItem,
+  TutorKbChatRecord, TutorKbChatResult, TutorKbDoc, TutorKbGenerateResult, TutorKbParsedText,
+  TutorShare, TutorShareEntry, TutorBackupCounts,
+} from "./tutor";
+export type * from "./tutor";
 
 export type * from "./plugin";
 export type * from "./market";
@@ -642,4 +651,87 @@ export interface AgentPort {
   compaction(): Promise<CompactionSettings>;
   saveCompaction(softLimitTokens: number): Promise<CompactionSettings>;
   setGoal(text: string): Promise<void>;
+
+  // ── 学习导师 ──────────────────────────────────────────────────────────
+  // The tutor subject: generation sessions, plans, quizzes, progress,
+  // notes, search and usage over /tutor/*. The run endpoints stream their
+  // answer as SSE off a POST, so they arrive through tutorEventStream; the
+  // engine that drives it owns reconnect policy (idempotent endpoints
+  // resume via lastEventId, clarify does not reconnect).
+  tutorSessions(): Promise<TutorSession[]>;
+  tutorSession(id: string): Promise<TutorSession>;
+  tutorCreateSession(title?: string): Promise<TutorSession>;
+  tutorDeleteSession(id: string): Promise<void>;
+  tutorMaterials(sid: string): Promise<TutorMaterial[]>;
+  tutorMaterialText(sid: string, name: string, content: string): Promise<TutorMaterial>;
+  tutorMaterialURL(sid: string, url: string): Promise<TutorMaterial>;
+  tutorMaterialUpload(sid: string, filename: string, contentBase64: string): Promise<TutorMaterial>;
+  tutorMaterialConfirm(sid: string, mid: string, parseMode: "full" | "fast"): Promise<TutorMaterial>;
+  tutorMaterialParse(sid: string, mid: string): Promise<TutorMaterial>;
+  tutorMaterialDelete(sid: string, mid: string): Promise<void>;
+  tutorCancel(sid: string): Promise<void>;
+  tutorEventStream(path: string, body: unknown, opts?: TutorStreamOptions): AsyncGenerator<TutorFrame, void, unknown>;
+  tutorPlans(): Promise<TutorPlanSummary[]>;
+  tutorPlan(id: string): Promise<TutorPlan>;
+  tutorPlanVersions(id: string): Promise<TutorPlanVersionRow[]>;
+  tutorPlanVersion(id: string, version: number): Promise<TutorPlan>;
+  tutorPlanMarkdown(id: string): Promise<string>;
+  tutorPlanICS(id: string): Promise<string>;
+  tutorPlanPDF(id: string): Promise<{ content: string; degraded: boolean }>;
+  tutorPlanApkg(id: string, wrongOnly?: boolean): Promise<Blob>;
+  tutorPlanSlides(id: string): Promise<string>;
+  tutorUnitSlides(pid: string, uid: string): Promise<string>;
+  tutorStudyMaterials(pid: string, req: TutorMaterialsRequest): Promise<TutorMaterialsSnapshot>;
+  tutorQuizzes(pid: string): Promise<TutorQuizSet>;
+  tutorQuizGenerate(pid: string, refresh?: boolean): Promise<TutorQuizSet>;
+  tutorQuizSubmit(qid: string, planId: string, selected?: string, text?: string): Promise<TutorGrade>;
+  tutorQuizStats(pid: string): Promise<TutorQuizStats>;
+  tutorQuizWrong(pid: string): Promise<{ items: TutorWrongItem[]; total: number }>;
+  tutorWrongOverview(): Promise<{ total: number; items: { plan_id: string; topic: string; count: number }[] }>;
+  tutorWrongQueue(limit?: number): Promise<{ items: TutorWrongItem[]; total: number }>;
+  tutorProgressRecord(planId: string, nodeId: string, status: string, quizScore?: number): Promise<TutorProgressRow>;
+  tutorProgressOf(pid: string): Promise<TutorProgressOverview>;
+  tutorReviewDue(limit?: number): Promise<{ items: TutorReviewItem[]; total: number }>;
+  tutorReviewQueue(limit?: number): Promise<{ items: TutorReviewItem[]; total: number }>;
+  tutorStatsSummary(): Promise<TutorStatsSummary>;
+  tutorStatsCalendar(): Promise<Record<string, number>>;
+  tutorStatsByPlan(): Promise<{ plan_id: string; topic: string; minutes: number }[]>;
+  tutorLogs(planId?: string): Promise<TutorLearningLog[]>;
+  tutorLogAdd(planId: string, minutes: number, note?: string, date?: string): Promise<TutorLearningLog>;
+  tutorLogDelete(planId: string, logId: string): Promise<void>;
+  tutorNotes(): Promise<TutorNote[]>;
+  tutorNoteCreate(title: string, body: string): Promise<TutorNote>;
+  tutorNote(id: string): Promise<TutorNote>;
+  tutorNoteSave(id: string, title: string, body: string): Promise<TutorNote>;
+  tutorNoteDelete(id: string): Promise<void>;
+  tutorNotesZip(): Promise<Blob>;
+  tutorNotesImport(files: { name: string; contentBase64: string }[]): Promise<TutorNoteImportResult>;
+  tutorSearch(q: string, limit?: number): Promise<TutorSearchResults>;
+  tutorUsage(days?: number): Promise<TutorUsageSummary>;
+  // The knowledge base: documents through upload/confirm/parse (text and
+  // URL straight to parsed), citation-backed chat, and one-click plan
+  // generation from library documents.
+  tutorKbUpload(filename: string, contentBase64: string): Promise<TutorKbDoc>;
+  tutorKbAddText(title: string, text: string): Promise<TutorKbDoc>;
+  tutorKbAddURL(url: string, title?: string): Promise<TutorKbDoc>;
+  tutorKbDocs(q?: string, kind?: string, limit?: number): Promise<TutorKbDoc[]>;
+  tutorKbDoc(id: string): Promise<TutorKbDoc>;
+  tutorKbRename(id: string, title: string): Promise<TutorKbDoc>;
+  tutorKbDelete(id: string): Promise<void>;
+  tutorKbConfirm(id: string): Promise<TutorKbDoc>;
+  tutorKbParse(id: string, mode?: "full" | "fast"): Promise<TutorKbDoc>;
+  tutorKbRawHref(id: string, download?: boolean): string;
+  tutorKbParsed(id: string): Promise<TutorKbParsedText>;
+  tutorKbExportZip(ids?: string[]): Promise<Blob>;
+  tutorKbGenerate(documentIds: string[], title?: string): Promise<TutorKbGenerateResult>;
+  tutorKbChat(question: string, documentIds?: string[]): Promise<TutorKbChatResult>;
+  tutorKbChats(q?: string, limit?: number, offset?: number): Promise<{ items: TutorKbChatRecord[]; total: number }>;
+  tutorKbChatDelete(id: string): Promise<void>;
+  tutorShareCreate(planId: string): Promise<TutorShare>;
+  tutorShareStatus(planId: string): Promise<TutorShare>;
+  tutorShareRevoke(planId: string): Promise<void>;
+  tutorShares(): Promise<{ shares: TutorShareEntry[] }>;
+  tutorBackupExport(): Promise<Blob>;
+  tutorBackupPreview(contentBase64: string): Promise<TutorBackupCounts>;
+  tutorBackupImport(contentBase64: string): Promise<TutorBackupCounts>;
 }

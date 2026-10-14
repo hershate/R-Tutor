@@ -20,9 +20,11 @@ import { EN_BACKUP } from "./en_backup";
 import { EN_FEEDBACK } from "./en_feedback";
 import { EN_COMMUNITY } from "./en_community";
 import { EN_SPONSOR } from "./en_sponsor";
+import { EN_TUTOR } from "./en_tutor";
 
 export const EN: Record<string, string> = {
   ...EN_SURFACES,
+  ...EN_TUTOR,
   "重命名聊天": "Rename chat",
   "保持简短且易于识别": "Keep it short and recognizable",
   "聊天标题": "Chat title",

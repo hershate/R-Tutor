@@ -62,6 +62,8 @@ interface Props {
   onSettings: (section?: string) => void;
   onFiles: () => void;
   onFeedback: (tab?: "send" | "mine") => void;
+  /** Opens the study tutor sheet. */
+  onTutor: () => void;
   // Reports with a new reply or a question waiting; the entry and the palette say so.
   feedbackUnread: number;
   onFind: () => void;
@@ -109,6 +111,7 @@ export function Sidebar({
   onSettings,
   onFiles,
   onFeedback,
+  onTutor,
   feedbackUnread,
   onFind,
   onError,
@@ -170,6 +173,8 @@ export function Sidebar({
     () => [
       { id: "new", label: t("新建会话"), icon: "plus", keywords: "new session chat 新建",
         run: () => void onOpen({ root: newSessionRoot }).catch(onError) },
+      { id: "tutor", label: t("学习导师"), icon: "file", keywords: "study tutor learn plan review quiz 学习 导师 方案 复习 测验 讲义",
+        run: onTutor },
       { id: "find", label: t("在这段对话里查找"), icon: "search", keywords: "find search conversation 查找 搜索 对话",
         keys: chord("F"), run: onFind },
       { id: "files", label: t("文件"), icon: "file", keywords: "files workspace explorer 文件 工作区", run: onFiles },
@@ -192,7 +197,7 @@ export function Sidebar({
       { id: "settings", label: t("设置"), icon: "settings", keywords: "settings preferences 设置 偏好",
         run: () => onSettings() },
     ],
-    [newSessionRoot, onOpen, onFiles, onSettings, onFeedback, feedbackUnread, onFind, onError],
+    [newSessionRoot, onOpen, onFiles, onSettings, onFeedback, onTutor, feedbackUnread, onFind, onError],
   );
   const sessionCount = tree.reduce(
     (n, ws) => n + (ws.total === undefined ? ws.sessions.filter((session) => !session.archived).length : ws.total - (ws.archived ?? 0)),

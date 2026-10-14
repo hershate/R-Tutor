@@ -42,7 +42,7 @@ function draw(collapsed = false) {
         readRemoteTree={async () => {}} reloadTree={reload} adder={adder} onOpen={open} onOpenRemote={remote}
         onFocusPane={() => {}} onClosePanes={async () => {}} onPause={() => {}} onArchive={async () => {}}
         onRename={() => {}} onCollapse={() => {}} account={null} accountUnread="" wallet=""
-        onSettings={() => {}} onFeedback={() => {}} feedbackUnread={0} onFind={() => {}}
+        onSettings={() => {}} onFeedback={() => {}} onTutor={() => {}} feedbackUnread={0} onFind={() => {}}
         onError={(e) => setError(String(e))}
       />
     </>;
