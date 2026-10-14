@@ -26,6 +26,7 @@ import (
 	"reasonix/internal/contract/provider"
 	"reasonix/internal/contract/surface"
 	"reasonix/internal/runtime/delegation"
+	"reasonix/internal/runtime/tutor"
 	"reasonix/internal/session/control"
 	"reasonix/internal/state/stats"
 	"reasonix/internal/state/store"
@@ -93,6 +94,9 @@ type Server struct {
 	// resolver is what every rebuild of this pane resolves models through, set
 	// by the hub. Nil leaves boot reading this machine's own config.
 	resolver provider.Resolver
+	// tutorSvc is the tutor surface this server serves; nil until first use
+	// builds the process-wide one from the state root (see tutor.go).
+	tutorSvc *tutor.Service
 }
 
 // New builds a Server. bc must be what the controller's events reach; a host
