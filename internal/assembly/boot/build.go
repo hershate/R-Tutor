@@ -324,6 +324,7 @@ func (b *builder) wireTools() error {
 	addSystemOne(t.reg, cfg.Tools.Enabled, cfg, b.keyedClient)
 	addAdvisor(t.reg, cfg, b.proxy, b.sink)
 	addWebSearch(t.reg, cfg, b.proxy, b.sink)
+	addTutorPromote(t.reg, cfg.Tools.Enabled, b.roots.TutorDir(), root)
 	b.addBestOf()
 	if cfg.Agent.CodeMode {
 		t.reg.Add(script.New())
