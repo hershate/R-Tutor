@@ -134,6 +134,16 @@ Checklist 全 ✅，Deep Tutor 语义逐条对位移植。架构与映射决策�
   EN 要改 REASONIX_HOME 的 config.toml [desktop] language 并重启 web；#chat 哈希
   仅挂载时消费，翻转要带哈希整页导航而非 hashchange
 
+**性能优化第 11 轮（2026-10-16 凌晨，/goal 持续性能优化，面：少打开的面出壳）**：
+
+- 第 10 轮后 index 里仍坐着四块少打开的整面：反馈两 body、手机配对弹层、
+  首跑引导 ×2
+- perf：薄框架留壳（Feedback 对话框框架/Chrome 标题栏），重 body 走 Settings
+  同款「随壳预取 + lazy」；首跑引导的回退就是闸门已画的 data-run="idle" 空帧。
+  eager JS 570.5→488.3KB（对基线累计 -62.7%，gzip -64.8%）、index 353.8→273.9KB
+- 验证：tsc 0 / vitest 548×4673 全绿（零用例改动）/ CDP 复走 zh+chat 全绿
+- 有意不做：prefsnav（目录表，壳内多处读）；CSS 按面拆分（闸门读 app.css ?raw）
+
 ## 闸门口径（复核用）
 
 make lint（golangci 0 issues + repolint clean 2693 零加宽）；make check；tutor 全包
