@@ -13,6 +13,9 @@ class Probe extends SseHttp {
   decide(path: string) {
     return this.postAcked(path, {});
   }
+  remove<T>(path: string) {
+    return this.del0<T>(path);
+  }
 }
 
 afterEach(() => {
@@ -33,6 +36,20 @@ function deferredFetch() {
 }
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
+
+it("a DELETE that answers 204 with no body settles as undefined", async () => {
+  const fetchMock = vi.fn(async () => ({ ok: true, status: 204, text: async () => "" }));
+  vi.stubGlobal("fetch", fetchMock);
+  const gone = await new Probe().remove<void>("/tutor/notes/n1");
+  expect(gone).toBeUndefined();
+});
+
+it("a DELETE that answers JSON still hands the payload through", async () => {
+  const fetchMock = vi.fn(async () => ({ ok: true, status: 200, text: async () => '{"uninstalled":true}' }));
+  vi.stubGlobal("fetch", fetchMock);
+  const back = await new Probe().remove<{ uninstalled: boolean }>("/plugins/x");
+  expect(back).toEqual({ uninstalled: true });
+});
 
 it("typed surface answers retain JSON values on the wire", async () => {
   const fetchMock = vi.fn(async (_url: string, _init: RequestInit) => ({ ok:true, status:204, text:async () => "" }));

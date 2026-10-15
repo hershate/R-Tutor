@@ -113,12 +113,15 @@ export class SseHttp {
     if (!res.ok) await SseHttp.fail(path, res);
   }
 
-  // A DELETE whose answer is the payload. post0's counterpart, and it exists
-  // for the same reason: hand-rolling one drops the refusal's code.
+  // A DELETE whose answer may be the payload. post0's counterpart, and it
+  // exists for the same reason: hand-rolling one drops the refusal's code.
+  // The kernel's tutor deletes answer 204 with no body at all, so an empty
+  // answer is undefined, not a JSON parse error.
   protected async del0<T>(path: string): Promise<T> {
     const res = await fetch(this.base + path, { method: "DELETE", credentials: "same-origin" });
     if (!res.ok) await SseHttp.fail(path, res);
-    return (await res.json()) as T;
+    const text = await res.text();
+    return (text === "" ? undefined : JSON.parse(text)) as T;
   }
 
   // Reads refuse with a code the same way writes do, so this goes through the
