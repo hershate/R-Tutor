@@ -1,3 +1,10 @@
+---
+owner: @SivanCola
+backup: @esengine
+status: active
+reviewed: 2026-10-15
+---
+
 # Reasonix CLI 命令参考
 
 <a href="../README.zh-CN.md">README</a>
@@ -523,7 +530,7 @@ SSH 下远端进程无法读取本机剪贴板，请使用终端粘贴快捷键�
 | `/theme [auto\|light\|dark\|style\|list]` | 打开选择器预览并切换 CLI 背景模式和强调色。 |
 | `/currency [auto\|CNY\|USD]` | 查看或切换用户全局费用展示币种，并刷新当前运行时。 |
 | `/paste-image` | 读取剪贴板图片并插入可编辑的附件标记。 |
-| `/tutor` | 指引学习导师入口：Studio 侧栏或命令面板打开；`reasonix web` 在浏览器打开（地址加 `#tutor` 直达）。 |
+| `/tutor` | 指引学习导师界面：它是所有窗口式前端打开时的首页（Studio 与 `reasonix web` 一致）。浏览器地址加 `#tutor` 可直达；TUI 没有导师界面，命令只打印界面所在位置。 |
 | `/mouse` | 切换应用内鼠标选区、滚动条和滚轮处理。 |
 | `/effort` | 查看或切换 reasoning effort。 |
 | `/output-style` | 选择回答风格。 |
