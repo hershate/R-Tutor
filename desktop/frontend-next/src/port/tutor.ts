@@ -1,7 +1,7 @@
 // The tutor's whole surface over /tutor/*: entities as the kernel writes
 // them, the SSE frame the run streams carry, and the request bodies the
-// writing endpoints take. Deep-tutor's shapes, kebab-free and snake_cased
-// exactly as the Go structs tag them.
+// writing endpoints take. Shapes are kebab-free and snake_cased exactly as
+// the Go structs tag them.
 
 export type TutorStatus = "idle" | "running" | "paused_clarify" | "done" | "error" | "interrupted";
 

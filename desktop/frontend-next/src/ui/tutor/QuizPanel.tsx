@@ -4,7 +4,7 @@ import { reason } from "../../i18n/kernel";
 import type { AgentPort } from "../../port/port";
 import type { TutorQuizItem } from "../../port/tutor";
 
-// The quiz panel: Deep-tutor's QuizModal as a tab. Choice questions are
+// The quiz panel: a quiz run as a tab. Choice questions are
 // judged by the server; fill/short/essay reveal a reference answer for
 // self-assessment. When every choice is judged, per-node accuracy is written
 // back as progress — score ≥ 0.8 marks the node done.
@@ -56,7 +56,7 @@ export function QuizPanel({ port, pid, onError }: Props) {
   };
 
   // Aggregate judged choice accuracy per node and write it back as one
-  // progress record per node, Deep-tutor's closing move.
+  // progress record per node.
   const maybeWriteProgress = () => {
     const choices = (items ?? []).filter((q) => q.type === "choice");
     const judged = choices.filter((q) => verdicts[q.id] !== undefined || picked[q.id]);

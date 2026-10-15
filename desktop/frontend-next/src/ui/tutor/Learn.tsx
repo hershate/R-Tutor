@@ -6,8 +6,7 @@ import type { TutorLearningLog, TutorPlanSummary, TutorProgressOverview, TutorSt
 import type { TutorView } from "./Tutor";
 
 // The learn center: today's study rows, the plan picker, the progress board
-// with node status cycling, and the check-in form with logs — Deep-tutor's
-// LearnIndex + Learn collapsed into one sheet view.
+// with node status cycling, and the check-in form with logs — one sheet view.
 interface Props {
   port: AgentPort;
   pid?: string;

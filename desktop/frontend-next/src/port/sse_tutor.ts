@@ -10,11 +10,10 @@ import type {
 } from "./tutor";
 
 // The tutor subject: every /tutor/* read and write except the run streams,
-// which arrive through tutorEventStream below. Deep-tutor's generation is a
-// POST whose answer is an SSE body, so EventSource cannot carry it; this
-// reader walks the response stream frame by frame instead and the run
-// endpoints resume through Last-Event-ID exactly like Deep-tutor's own
-// fetch-based client.
+// which arrive through tutorEventStream below. Generation is a POST whose
+// answer is an SSE body, so EventSource cannot carry it; this reader walks
+// the response stream frame by frame instead and the run endpoints resume
+// through Last-Event-ID.
 export class SseTutor extends SseWorkspace {
   tutorSessions() {
     return this.get<TutorSession[]>("/tutor/sessions");

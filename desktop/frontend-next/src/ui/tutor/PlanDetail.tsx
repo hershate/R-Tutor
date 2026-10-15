@@ -10,8 +10,8 @@ import { QuizPanel } from "./QuizPanel";
 import { MaterialsPanel } from "./MaterialsPanel";
 
 // Plan detail: header with versions and exports, summary chips, then tabs —
-// Deep-tutor's outline/schedule/resources/validation plus this port's quiz
-// and self-study materials as first-class tabs.
+// outline/schedule/resources/validation plus quiz and self-study materials
+// as first-class tabs.
 interface Props {
   port: AgentPort;
   pid: string;

@@ -5,9 +5,9 @@ import type { AgentPort } from "../../port/port";
 import type { TutorReviewItem, TutorWrongItem } from "../../port/tutor";
 import type { TutorView } from "./Tutor";
 
-// The review workflow: due knowledge cards first, then wrong quizzes — the
-// same honest-recall flow as Deep-tutor (flip before rating), with the
-// three self-assessment buttons writing progress back.
+// The review workflow: due knowledge cards first, then wrong quizzes — an
+// honest-recall flow (flip before rating), with the three self-assessment
+// buttons writing progress back.
 interface Props {
   port: AgentPort;
   onGo: (view: TutorView) => void;

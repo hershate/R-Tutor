@@ -1,5 +1,5 @@
 // The tutor sheet's wording, keyed by its Chinese source strings like every
-// other EN module. Study-domain terms follow the Deep-tutor translations.
+// other EN module.
 export const EN_TUTOR: Record<string, string> = {
   "学习导师": "Study Tutor",
   "学习导航": "Study navigation",

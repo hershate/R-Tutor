@@ -6,7 +6,7 @@ import type { TutorSearchResults } from "../../port/tutor";
 import type { TutorView } from "./Tutor";
 
 // Global search over plans, knowledge nodes, notes, and KB documents.
-// Grouped results with counts, exactly Deep-tutor's /search page.
+// Grouped results with counts.
 interface Props {
   port: AgentPort;
   onGo: (view: TutorView) => void;

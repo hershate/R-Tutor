@@ -6,8 +6,8 @@ import type { TutorBackupCounts, TutorPlanSummary, TutorSession, TutorShareEntry
 import * as engine from "./engine";
 import type { TutorView } from "./Tutor";
 
-// Home is Deep-tutor's Home.tsx: the big goal box with structured time
-// fields, plus the running tasks and recent plans to jump back into.
+// Home: the big goal box with structured time fields, plus the running tasks
+// and recent plans to jump back into.
 interface Props {
   port: AgentPort;
   onGo: (view: TutorView) => void;

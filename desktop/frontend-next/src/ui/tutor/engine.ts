@@ -3,9 +3,8 @@ import { HttpError } from "../../port/port";
 import { reason } from "../../i18n/kernel";
 import type { TutorFrame, TutorTimeFields } from "../../port/tutor";
 
-// engine.ts — the tutor's task ledger, Deep-tutor's lib/taskEngine +
-// store/tasks.ts ported to this app's shapes. Run streams live in this
-// module, not in the React tree: closing the page never aborts a
+// engine.ts — the tutor's task ledger in this app's shapes. Run streams live
+// in this module, not in the React tree: closing the page never aborts a
 // generation, and a refresh reattaches by re-POSTing the kept raw text
 // (the kernel answers an already-running session by relaying its stream).
 
@@ -70,7 +69,7 @@ export function taskOf(sessionId: string): TaskEntry | undefined {
   return entries.get(sessionId);
 }
 
-/** Chinese step labels, Deep-tutor's own wording for the eight tools. */
+/** Chinese step labels for the eight tools. */
 export const TOOL_LABEL: Record<string, string> = {
   parse_material: "解析资料",
   understand_intent: "理解学习目标",
@@ -88,7 +87,7 @@ export function toolLabel(tool: string): string {
 
 // Only recovery fields persist: the rest is rebuilt by the stream replay
 // when the engine reattaches, and stale volatile numbers mislead more than
-// they tell. Same cut as Deep-tutor's localStorage ledger.
+// they tell.
 interface Persisted {
   sessionId: string;
   phase: TutorPhase;
@@ -282,7 +281,7 @@ async function runStream(
         return;
       }
       attempt += 1;
-      // Full-jitter backoff, the thundering-herd cap Deep-tutor uses.
+      // Full-jitter backoff caps the thundering herd.
       await new Promise((r) => setTimeout(r, 250 + Math.random() * Math.min(4000, 2 ** attempt * 250)));
       if (controller.signal.aborted) return;
       // Reconnect through the attach door: generate with the kept raw text
@@ -344,7 +343,7 @@ export async function cancelTask(port: AgentPort, sessionId: string) {
 
 /** Reattach after a reload or a give-up: sessions the kernel still holds as
  * running get their stream back; everything else settles to its durable
- * status. One-way server-over-local, like Deep-tutor's reconcile. */
+ * status — a one-way server-over-local reconcile. */
 export async function boot(port: AgentPort) {
   restoreTasks();
   let sessions: Awaited<ReturnType<typeof port.tutorSessions>>;

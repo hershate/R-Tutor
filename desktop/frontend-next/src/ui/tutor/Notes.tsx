@@ -6,7 +6,7 @@ import type { AgentPort } from "../../port/port";
 import type { TutorNote } from "../../port/tutor";
 
 // Free notes: list + editor with live preview, plus the portable ZIP
-// export/import that round-trips Deep-tutor's .md format.
+// export/import that round-trips the note .md format.
 interface Props {
   port: AgentPort;
   onError: (message: string) => void;

@@ -6,9 +6,8 @@ import * as engine from "./engine";
 import { useTasks } from "./Tutor";
 import type { TutorView } from "./Tutor";
 
-// The generation progress page: a pure subscriber of the task ledger, like
-// Deep-tutor's GenerateProgress. The stream lives in the engine, so leaving
-// this view never cancels anything.
+// The generation progress page: a pure subscriber of the task ledger. The
+// stream lives in the engine, so leaving this view never cancels anything.
 interface Props {
   port: AgentPort;
   sid: string;
@@ -29,8 +28,7 @@ export function Generate({ port, sid, onGo, onError }: Props) {
     return () => clearInterval(timer);
   }, [entry?.phase, entry?.startedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Deep-tutor lands on the plan 1.5s after done; the sheet equivalent is
-  // switching the view once the plan id exists.
+  // The view switches to the plan 1.5s after done, once the plan id exists.
   useEffect(() => {
     if (entry?.phase === "done" && entry.planId) {
       const timer = setTimeout(() => onGo({ k: "plan", pid: entry.planId! }), 1500);

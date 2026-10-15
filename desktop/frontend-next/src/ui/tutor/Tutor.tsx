@@ -16,10 +16,9 @@ import { UsageView } from "./UsageView";
 import { SearchView } from "./SearchView";
 import { Kb } from "./Kb";
 
-// The tutor sheet: one window over Deep-tutor's page family. There is no URL
+// The tutor sheet: one window over the tutor's page family. There is no URL
 // router here, so the routes become a view union the shell switches on —
-// home/generate/clarify/plans/plan/learn/review/notes/usage/kb/search carry
-// the same meanings as Deep-tutor's paths.
+// home/generate/clarify/plans/plan/learn/review/notes/usage/kb/search.
 export type TutorView =
   | { k: "home" }
   | { k: "generate"; sid: string }

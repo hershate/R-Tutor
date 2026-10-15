@@ -5,8 +5,8 @@ import type { AgentPort } from "../../port/port";
 import type { TutorUsageSummary } from "../../port/tutor";
 
 // The tutor usage view: today against the daily budget and the trailing
-// cost bars — Deep-tutor's Usage page, honestly limited to what the file
-// ledger keeps (cost and runs per day).
+// cost bars — honestly limited to what the file ledger keeps (cost and runs
+// per day).
 interface Props {
   port: AgentPort;
   onError: (message: string) => void;

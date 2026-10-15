@@ -6,9 +6,9 @@ import * as engine from "./engine";
 import { useTasks } from "./Tutor";
 import type { TutorView } from "./Tutor";
 
-// The clarify page: Deep-tutor's questions are plain free-text strings, one
-// input each, with the draft kept locally until submit. Submitting resumes
-// the run and lands back on the progress view.
+// The clarify page: questions are plain free-text strings, one input each,
+// with the draft kept locally until submit. Submitting resumes the run and
+// lands back on the progress view.
 interface Props {
   port: AgentPort;
   sid: string;
@@ -25,8 +25,8 @@ export function Clarify({ port, sid, onGo, onError }: Props) {
   const [answers, setAnswers] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
 
-  // Three-level question fallback, Deep-tutor's order: the live ledger, the
-  // session row, the locally kept draft — so a deep link still shows them.
+  // Three-level question fallback: the live ledger, the session row, the
+  // locally kept draft — so a deep link still shows them.
   useEffect(() => {
     if (entry?.questions && entry.questions.length > 0) {
       setQuestions(entry.questions);

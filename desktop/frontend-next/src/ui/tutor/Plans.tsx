@@ -6,7 +6,7 @@ import type { TutorPlanSummary, TutorSession } from "../../port/tutor";
 import type { TutorView } from "./Tutor";
 
 // The plans list: every delivered plan lineage plus placeholder rows for
-// in-flight sessions, Deep-tutor's Plans page.
+// in-flight sessions.
 interface Props {
   port: AgentPort;
   onGo: (view: TutorView) => void;
