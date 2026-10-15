@@ -241,6 +241,16 @@ func (s *Server) registerTutorRoutes(mux *http.ServeMux) {
 	s.registerTutorBackupRoutes(mux)
 }
 
+// tutorList keeps the wire contract that a list is an array: the page
+// dereferences these without a null check, so a nil slice must never reach
+// the encoder.
+func tutorList[T any](items []T) []T {
+	if items == nil {
+		return []T{}
+	}
+	return items
+}
+
 func (s *Server) tutorCreateSession(w http.ResponseWriter, r *http.Request) {
 	svc := s.tutorService()
 	if svc == nil {
@@ -273,7 +283,7 @@ func (s *Server) tutorSessions(w http.ResponseWriter, _ *http.Request) {
 		tutorRefuse(w, err)
 		return
 	}
-	writeJSON(w, sessions)
+	writeJSON(w, tutorList(sessions))
 }
 
 func (s *Server) tutorSession(w http.ResponseWriter, r *http.Request) {
@@ -387,7 +397,7 @@ func (s *Server) tutorMaterials(w http.ResponseWriter, r *http.Request) {
 		tutorRefuse(w, err)
 		return
 	}
-	writeJSON(w, materials)
+	writeJSON(w, tutorList(materials))
 }
 
 func (s *Server) tutorMaterialConfirm(w http.ResponseWriter, r *http.Request) {

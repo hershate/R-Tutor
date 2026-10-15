@@ -83,7 +83,7 @@ func (s *Server) tutorPlans(w http.ResponseWriter, r *http.Request) {
 		}
 		plans = kept
 	}
-	writeJSON(w, plans)
+	writeJSON(w, tutorList(plans))
 }
 
 func (s *Server) tutorPlan(w http.ResponseWriter, r *http.Request) {
@@ -463,7 +463,7 @@ func (s *Server) tutorLogs(w http.ResponseWriter, r *http.Request) {
 		tutorRefuse(w, err)
 		return
 	}
-	writeJSON(w, logs)
+	writeJSON(w, tutorList(logs))
 }
 
 func (s *Server) tutorLogAdd(w http.ResponseWriter, r *http.Request) {
@@ -524,7 +524,7 @@ func (s *Server) tutorNotes(w http.ResponseWriter, _ *http.Request) {
 		tutorRefuse(w, err)
 		return
 	}
-	writeJSON(w, notes)
+	writeJSON(w, tutorList(notes))
 }
 
 func (s *Server) tutorNoteCreate(w http.ResponseWriter, r *http.Request) {

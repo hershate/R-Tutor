@@ -11,6 +11,9 @@ export class MockHub implements HubPort {
   private readonly ports = new Map<string, AgentPort>();
   private readonly machine = { configured: false };
   private readonly settings = new MockPort();
+  // Distinct from the settings port on purpose: the sheet must not read tutor
+  // data through machinePort, whose real base 404s every /tutor call.
+  private readonly tutor = new MockPort();
   private readonly views: RuntimeView[] = [
     { id: "r1", base: "", root: "~/projects/DeepSeek-Reasonix", name: "DeepSeek-Reasonix", sessionPath: "/sessions/mock.jsonl" },
   ];
@@ -334,6 +337,10 @@ export class MockHub implements HubPort {
     if (local) return this.portFor(local);
     this.settings.machine = this.machine;
     return this.settings;
+  }
+
+  tutorPort(): AgentPort {
+    return this.tutor;
   }
 
   portFor(rt: RuntimeView): AgentPort {

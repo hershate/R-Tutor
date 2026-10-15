@@ -15,8 +15,14 @@ import type {
 // the response stream frame by frame instead and the run endpoints resume
 // through Last-Event-ID.
 export class SseTutor extends SseWorkspace {
+  // A list endpoint may answer null for "empty" on older hosts; the sheet
+  // reads .length without a null check, so null never leaves the port.
+  private async list<T>(path: string): Promise<T[]> {
+    const items = await this.get<T[] | null>(path);
+    return items ?? [];
+  }
   tutorSessions() {
-    return this.get<TutorSession[]>("/tutor/sessions");
+    return this.list<TutorSession>("/tutor/sessions");
   }
   tutorSession(id: string) {
     return this.get<TutorSession>("/tutor/sessions/" + encodeURIComponent(id));
@@ -28,7 +34,7 @@ export class SseTutor extends SseWorkspace {
     return this.del0<void>("/tutor/sessions/" + encodeURIComponent(id));
   }
   tutorMaterials(sid: string) {
-    return this.get<TutorMaterial[]>("/tutor/sessions/" + encodeURIComponent(sid) + "/materials");
+    return this.list<TutorMaterial>("/tutor/sessions/" + encodeURIComponent(sid) + "/materials");
   }
   tutorMaterialText(sid: string, name: string, content: string) {
     return this.post0<TutorMaterial>(`/tutor/sessions/${encodeURIComponent(sid)}/materials/text`, { name, content });
@@ -54,7 +60,7 @@ export class SseTutor extends SseWorkspace {
     return this.post0<void>(`/tutor/sessions/${encodeURIComponent(sid)}/cancel`, {});
   }
   tutorPlans() {
-    return this.get<TutorPlanSummary[]>("/tutor/plans");
+    return this.list<TutorPlanSummary>("/tutor/plans");
   }
   tutorPlan(id: string) {
     return this.get<TutorPlan>("/tutor/plans/" + encodeURIComponent(id));
@@ -150,11 +156,11 @@ export class SseTutor extends SseWorkspace {
     return this.get<Record<string, number>>("/tutor/progress/stats/calendar");
   }
   tutorStatsByPlan() {
-    return this.get<TutorPlanStatLike[]>("/tutor/progress/stats/by-plan");
+    return this.list<TutorPlanStatLike>("/tutor/progress/stats/by-plan");
   }
   tutorLogs(planId?: string) {
     const q = planId ? `?plan_id=${encodeURIComponent(planId)}` : "";
-    return this.get<TutorLearningLog[]>("/tutor/progress/logs" + q);
+    return this.list<TutorLearningLog>("/tutor/progress/logs" + q);
   }
   tutorLogAdd(planId: string, minutes: number, note?: string, date?: string) {
     return this.post0<TutorLearningLog>("/tutor/progress/logs", {
@@ -165,7 +171,7 @@ export class SseTutor extends SseWorkspace {
     return this.del0<void>(`/tutor/progress/logs/${encodeURIComponent(logId)}?plan_id=${encodeURIComponent(planId)}`);
   }
   tutorNotes() {
-    return this.get<TutorNote[]>("/tutor/notes");
+    return this.list<TutorNote>("/tutor/notes");
   }
   tutorNoteCreate(title: string, body: string) {
     return this.post0<TutorNote>("/tutor/notes", { title, body });

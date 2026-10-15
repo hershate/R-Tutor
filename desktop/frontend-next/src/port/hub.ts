@@ -203,6 +203,9 @@ export interface HubPort extends SharePort {
   pickFolder(): Promise<string | null>;
   // Machine settings resolve a local owner; workspace reads can pin a runtime.
   machinePort(runtimeId?: string): AgentPort;
+  /** The tutor's /tutor routes sit at the kernel's top level, under no
+   *  settings base: a port carrying /host/settings would 404 every call. */
+  tutorPort(): AgentPort;
   // Absolute paths of every file dropped anywhere on the window. It belongs
   // here rather than on a pane because the window has one of it: the shell
   // registers its drop listener once and ignores a second call, so a per-pane
@@ -221,6 +224,7 @@ export class SseHub implements HubPort {
   // pretending to belong to a runtime.
   private readonly shell = new SsePort();
   private readonly settings = new Map<string, AgentPort>();
+  private tutor?: AgentPort;
   // Questions seen this session, kept so an answer can carry the identities the
   // kernel will check it against.
   private readonly asked = new Map<string, RemoteAsk>();
@@ -575,6 +579,13 @@ export class SseHub implements HubPort {
     const port = new SsePort(base);
     this.settings.set(runtimeId, port);
     return port;
+  }
+
+  // One baseless port for the tutor sheet: /tutor routes belong to the kernel
+  // itself, not to any machine-settings base.
+  tutorPort(): AgentPort {
+    if (!this.tutor) this.tutor = new SsePort("");
+    return this.tutor;
   }
 
   portFor(rt: RuntimeView): AgentPort {

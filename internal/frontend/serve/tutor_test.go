@@ -199,6 +199,27 @@ func readSSE(t *testing.T, resp *http.Response) []map[string]string {
 	return events
 }
 
+// An empty tutor store still owes the page arrays: the sheet dereferences
+// every list without a null check, and JSON null blanks the whole surface.
+func TestTutorEmptyListsAreArrays(t *testing.T) {
+	_, srv, _ := newTutorTestServer(t)
+	for path, want := range map[string]string{
+		"/tutor/plans":                 "[]",
+		"/tutor/notes":                 "[]",
+		"/tutor/progress/logs":         "[]",
+		"/tutor/progress/review/due":   `{"items":`,
+		"/tutor/progress/review/queue": `{"items":`,
+	} {
+		resp, body := tutorGet(t, srv, path)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s: %d %s", path, resp.StatusCode, body)
+		}
+		if strings.Contains(body, "null") || !strings.HasPrefix(body, want) {
+			t.Fatalf("%s: empty store must answer %q without null, got %s", path, want, body)
+		}
+	}
+}
+
 func TestTutorEndpointsEndToEnd(t *testing.T) {
 	_, srv, _ := newTutorTestServer(t)
 
@@ -653,6 +674,7 @@ func TestTutorOccupancyRefusals(t *testing.T) {
 	}
 }
 
+// The tutor's web search resolves through Reasonix's unified selection —
 // agent.web_search_model in Model preferences — never a tutor-private
 // engine or credential. The serve binary links the provider kinds it
 // serves, so this side asserts the selection path without constructing a

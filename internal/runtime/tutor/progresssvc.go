@@ -191,6 +191,11 @@ func (s *Service) ReviewDue(limit int) map[string]any {
 	if len(items) > limit {
 		items = items[:limit]
 	}
+	// An empty due list still renders as an array: nil would reach the page
+	// as JSON null and break its list handling.
+	if items == nil {
+		items = []ReviewItem{}
+	}
 	return map[string]any{"items": items, "total": total}
 }
 

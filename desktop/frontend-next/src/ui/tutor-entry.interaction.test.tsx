@@ -65,4 +65,25 @@ describe("study tutor entries", () => {
     expect(await screen.findByRole("navigation", { name: "学习导航" })).toBeTruthy();
     expect(window.location.hash).toBe("");
   });
+
+  // The real machine port carries the /host/settings base; a tutor call on it
+  // leaves as /host/settings/tutor/... and dies on the host's 404. The sheet
+  // must read through the baseless tutor port, and this is the pin.
+  it("reads the sheet's data through the tutor port, not the settings port", async () => {
+    const h = hub();
+    const mp = h.machinePort();
+    mp.tutorPlans = vi.fn(async () => { throw new Error("tutor call on the settings port"); });
+    const tp = h.tutorPort();
+    const plan = {
+      id: "p1", session_id: "s1", title: "端口区分的方案", topic: "端口区分的方案", version: 1,
+      created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z",
+    };
+    tp.tutorPlans = vi.fn(async () => [plan]);
+    window.location.hash = "#tutor";
+    render(<App hub={h} />);
+    expect(await screen.findByRole("navigation", { name: "学习导航" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /端口区分的方案/ })).toBeTruthy();
+    expect(tp.tutorPlans).toHaveBeenCalled();
+    expect(mp.tutorPlans).not.toHaveBeenCalled();
+  });
 });

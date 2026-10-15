@@ -282,6 +282,7 @@ export function App({ hub }: { hub: HubPort }) {
   }, [hub, runtimes]);
   const activePort = panePorts.get(active) ?? panePorts.values().next().value ?? null;
   const machinePort = useMemo(() => hub.machinePort(), [hub]);
+  const tutorPort = useMemo(() => hub.tutorPort(), [hub]); // top-level /tutor routes; the settings base 404s them
   const machineRt = runtimes.find((rt) => !rt.host);
   const localRt = runtimes.find((rt) => rt.id === active && !rt.host) ?? machineRt;
   const localWorkspacePort = useMemo(() => hub.machinePort(localRt?.id), [hub, localRt?.id]);
@@ -761,11 +762,10 @@ export function App({ hub }: { hub: HubPort }) {
       )}
 
       {feedback && activePort && (
-
         <Feedback port={machinePort} tab={feedback} onClose={() => setFeedback(null)} onError={setError} onUnread={setFeedbackUnread} />
       )}
 
-      {tutor && <TutorSheet port={machinePort} onClose={() => setTutor(false)} onError={setError} />}
+      {tutor && <TutorSheet port={tutorPort} onClose={() => setTutor(false)} onError={setError} />}
 
       {settings && activePort && (
         <Boundary fallback={<SettingsUnavailable onClose={hidePrefs} />}>
