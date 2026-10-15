@@ -97,5 +97,9 @@ scripts/official-theme-art/__pycache__/
 *.exe~
 /REF
 
-# Local analysis notes (codebase-analyzer output)
-/note/
+# Local analysis notes (codebase-analyzer output); the graft stage journal
+# stays tracked so its history rides the repo.
+/note/*
+!/note/graft
+/note/graft/*
+!/note/graft/STAGE.md
