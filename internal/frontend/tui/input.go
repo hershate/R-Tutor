@@ -338,6 +338,11 @@ func (m *model) send(steer bool) tea.Cmd {
 		}
 		m.tr.AddNotice("info", "reasonix "+version)
 		return m.commit()
+	case name == "/tutor":
+		m.composer.Reset()
+		m.tr.AddEcho(display)
+		m.tr.AddNotice("info", i18n.M.CmdTutorHint)
+		return m.commit()
 	}
 	if name == "/paste-image" {
 		m.composer.Reset()

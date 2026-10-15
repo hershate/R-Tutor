@@ -416,6 +416,8 @@ var ChineseTraditional = Messages{
 	CmdReasonLang:        "設定可見思考語言",
 	CmdHelp:              "檢視命令列表",
 	CmdWeb:               "在 Web UI 中繼續目前工作階段",
+	CmdTutor:             "開啟學習導師所在的圖形介面",
+	CmdTutorHint:         "學習導師在圖形介面中：從 Studio 側欄或命令面板開啟「學習導師」，或執行 reasonix web 後在瀏覽器開啟（位址後加 #tutor 直達）",
 	CmdTodo:              "清除任務清單",
 	CmdQuit:              "退出會話",
 	CmdCopy:              "選擇回覆複製到剪貼簿",

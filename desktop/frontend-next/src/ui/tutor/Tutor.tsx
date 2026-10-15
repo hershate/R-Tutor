@@ -16,6 +16,15 @@ import { UsageView } from "./UsageView";
 import { SearchView } from "./SearchView";
 import { Kb } from "./Kb";
 
+// consumeTutorHash answers whether the address ended in #tutor and clears it,
+// so a hand-off link opens the sheet once and the address bar stops carrying
+// state. Terminals and outside links point here.
+export function consumeTutorHash(): boolean {
+  if (window.location.hash !== "#tutor") return false;
+  window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  return true;
+}
+
 // The tutor sheet: one window over the tutor's page family. There is no URL
 // router here, so the routes become a view union the shell switches on —
 // home/generate/clarify/plans/plan/learn/review/notes/usage/kb/search.

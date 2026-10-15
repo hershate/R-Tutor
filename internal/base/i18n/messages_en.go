@@ -427,6 +427,8 @@ var English = Messages{
 	CmdReasonLang:        "set visible reasoning language",
 	CmdHelp:              "list commands",
 	CmdWeb:               "continue this session in the Web UI",
+	CmdTutor:             "open the study tutor's graphical surface",
+	CmdTutorHint:         "the study tutor is graphical: open Study Tutor from the Studio rail or command palette, or run reasonix web and open it in the browser (append #tutor to the address)",
 	CmdTodo:              "dismiss the task list",
 	CmdQuit:              "exit the session",
 	CmdCopy:              "pick a response to copy to clipboard",

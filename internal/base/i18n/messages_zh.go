@@ -427,6 +427,8 @@ var Chinese = Messages{
 	CmdReasonLang:        "设置可见思考语言",
 	CmdHelp:              "查看命令列表",
 	CmdWeb:               "在 Web UI 中继续当前会话",
+	CmdTutor:             "打开学习导师所在的图形界面",
+	CmdTutorHint:         "学习导师在图形界面中：从 Studio 侧栏或命令面板打开「学习导师」，或运行 reasonix web 后在浏览器打开（地址后加 #tutor 直达）",
 	CmdTodo:              "清除任务清单",
 	CmdQuit:              "退出会话",
 	CmdCopy:              "选择回复复制到剪贴板",

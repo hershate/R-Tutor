@@ -27,7 +27,7 @@ import { RenameSession } from "./RenameSession";
 import { RemoteAsk } from "./RemoteAsk";
 import { useFeedbackUnread } from "./useFeedbackUnread";
 import { Feedback, type FeedbackTab } from "./Feedback";
-import { TutorSheet } from "./tutor/Tutor";
+import { TutorSheet, consumeTutorHash } from "./tutor/Tutor";
 import { usePaneForSheets } from "./usePaneForSheets";
 import { BrowserLogin } from "./BrowserLogin";
 import type { RemoteAsk as RemoteAskT, RemoteHost } from "../port/remote";
@@ -116,7 +116,7 @@ export function App({ hub }: { hub: HubPort }) {
   // false = closed, true = open at its last section, a string = open there.
   const [settings, setSettings] = useState<string | boolean>(false);
   const [feedback, setFeedback] = useState<FeedbackTab | null>(null);
-  const [tutor, setTutor] = useState(false);
+  const [tutor, setTutor] = useState(consumeTutorHash);
   const [feedbackUnread, setFeedbackUnread] = useState(0);
   const [browser, setBrowser] = useState(false);
   const [browserAsk, setBrowserAsk] = useState(0);
