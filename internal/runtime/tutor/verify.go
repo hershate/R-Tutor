@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -191,6 +192,69 @@ func requirePublicURL(rawURL string) error {
 		return fmt.Errorf("tutor: cloud metadata endpoint")
 	}
 	return requirePublicHost(u)
+}
+
+// cgnatBlock is RFC 6598 shared address space (100.64.0.0/10); some clouds
+// host instance metadata there, so it is refused like private space — the
+// same addition web_fetch and install_source carry.
+var cgnatBlock = func() *net.IPNet {
+	_, n, err := net.ParseCIDR("100.64.0.0/10")
+	if err != nil {
+		panic(err)
+	}
+	return n
+}()
+
+// requirePublicIP is the tutor's blocked set at dial time: Reasonix's
+// private/link-local/CGNAT refusals plus loopback, since a citation crawler
+// has no business on the local network at all.
+func requirePublicIP(ip net.IP) error {
+	if isPrivateIP(ip) || cgnatBlock.Contains(ip) {
+		return errors.New("tutor: internal address refused")
+	}
+	return nil
+}
+
+// publicOnlyDial applies Reasonix's dial-time SSRF scheme — the vetted-IP
+// dial web_fetch and install_source use — under the tutor's stricter policy.
+// Resolving at dial time and dialing the vetted IP closes the DNS-rebinding
+// gap a check-then-dial hostname guard leaves open.
+func publicOnlyDial(inner func(ctx context.Context, network, addr string) (net.Conn, error)) func(context.Context, string, string) (net.Conn, error) {
+	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, err
+		}
+		if ip := net.ParseIP(host); ip != nil {
+			if err := requirePublicIP(ip); err != nil {
+				return nil, err
+			}
+			return inner(ctx, network, addr)
+		}
+		ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+		if err != nil {
+			return nil, err
+		}
+		if len(ips) == 0 {
+			return nil, errors.New("tutor: host does not resolve")
+		}
+		for _, ip := range ips {
+			if err := requirePublicIP(ip.IP); err != nil {
+				return nil, fmt.Errorf("tutor: %s resolves to %s: %w", host, ip.IP, err)
+			}
+		}
+		return inner(ctx, network, net.JoinHostPort(ips[0].IP.String(), port))
+	}
+}
+
+// publicOnlyClient is an HTTP client whose every dial — redirects included —
+// is vetted; the parse-time requirePublicURL checks stay as the first line
+// with the friendlier errors.
+func publicOnlyClient(timeout time.Duration) *http.Client {
+	return &http.Client{
+		Timeout:   timeout,
+		Transport: &http.Transport{DialContext: publicOnlyDial((&net.Dialer{}).DialContext)},
+	}
 }
 
 // robotsAllowed fetches and parses robots.txt for the URL's host; a missing

@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"regexp"
 	"strings"
+
+	"reasonix/internal/contract/provider"
+	"reasonix/internal/tools/websearch"
 )
 
 // searchscreen.go is the mandatory relevance gate: every citation a plan
@@ -247,11 +250,14 @@ func (w *WebSearcher) SearchUnit(ctx context.Context, query string, limit int) [
 	if err != nil || llm == nil {
 		return nil
 	}
-	engine := w.effectiveEngine()
-	if strings.TrimSpace(query) == "" {
+	// The supplement path serves resources only; the search model's spend is
+	// metered on the plan-generation path, not here.
+	p, _, err := w.searchModel()
+	if err != nil || p == nil || strings.TrimSpace(query) == "" {
 		return nil
 	}
-	candidates, err := w.engineSearch(ctx, engine, query, limit)
+	tool := &websearch.Tool{Factory: func() (provider.Provider, error) { return p, nil }}
+	candidates, err := w.engineSearch(ctx, tool, query, limit)
 	if err != nil || len(candidates) == 0 {
 		return nil
 	}

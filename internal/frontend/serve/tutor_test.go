@@ -652,3 +652,37 @@ func TestTutorOccupancyRefusals(t *testing.T) {
 		t.Fatalf("empty generate refused with %d", resp.StatusCode)
 	}
 }
+
+// agent.web_search_model in Model preferences — never a tutor-private
+// engine or credential. The serve binary links the provider kinds it
+// serves, so this side asserts the selection path without constructing a
+// provider; the construction itself is boot's, tested beside its code.
+func TestTutorSearcherUsesReasonixWebSearchSelection(t *testing.T) {
+	home := t.TempDir()
+	body := `
+[agent]
+web_search_model = "ghost/none"
+`
+	if err := os.WriteFile(filepath.Join(home, "config.toml"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("REASONIX_HOME", home)
+	searcher, ok := tutorSearcherFromConfig().(*tutor.WebSearcher)
+	if !ok {
+		t.Fatalf("searcher is %T", searcher)
+	}
+	// A selection whose provider is gone answers Reasonix's own reason.
+	_, ref, err := searcher.SearchModel()
+	if err == nil || ref != "" {
+		t.Fatalf("broken selection = %q, %v", ref, err)
+	}
+	if reason, ok := config.WebSearchReasonOf(err); !ok || reason != config.WebSearchModelRemoved {
+		t.Fatalf("reason = %q, %v", reason, err)
+	}
+	// Without a selection the searcher answers empty and says so.
+	t.Setenv("REASONIX_HOME", t.TempDir())
+	p, ref, err := searcher.SearchModel()
+	if err != nil || p != nil || ref != "" {
+		t.Fatalf("unset selection = %v, %q, %v", p, ref, err)
+	}
+}

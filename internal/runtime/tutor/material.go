@@ -111,7 +111,8 @@ func fetchURLMaterial(ctx context.Context, rawURL string) (*ParsedMaterial, erro
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return nil, fmt.Errorf("tutor: invalid url %q", rawURL)
 	}
-	client := &http.Client{Timeout: urlTimeout, CheckRedirect: guardedRedirect}
+	client := publicOnlyClient(urlTimeout)
+	client.CheckRedirect = guardedRedirect
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
 		return nil, err

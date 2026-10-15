@@ -5,24 +5,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"regexp"
 	"sort"
 	"strings"
 	"sync"
-	"time"
+
+	"reasonix/internal/contract/config"
+	"reasonix/internal/contract/provider"
+	"reasonix/internal/tools/websearch"
 )
 
-// websearch.go is the production Searcher: two Bing engines (paid API when
-// a key is configured, the free web page otherwise), complexity-aware
-// quotas, SSRF-guarded verification, and the mandatory LLM relevance gate.
+// websearch.go is the production Searcher: Reasonix's unified web search
+// supplies the candidates; this side adds the quotas, SSRF-guarded
+// verification, and the mandatory LLM relevance gate.
 
 const (
-	searchTimeout       = 30 * time.Second
-	bingWebTimeout      = 15 * time.Second
-	bingWebMaxBytes     = 2 << 20
 	maxQueryChars       = 150
 	searchConcurrency   = 2
 	verifyConcurrency   = 4
@@ -36,17 +34,9 @@ const (
 	defaultStageCap     = 5
 )
 
-var (
-	bingWebEndpoint = "https://cn.bing.com/search"
-	bingAPIEndpoint = "https://api.bing.microsoft.com/v7.0/search"
-	bingWebHeaders  = map[string]string{
-		"User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-		"Accept":          "text/html,application/xhtml+xml",
-		"Accept-Language": "zh-CN,zh;q=0.9",
-	}
-	bingItemRe = regexp.MustCompile(`<h2[^>]*>\s*<a[^>]*href="([^"]+)"[^>]*>(.*?)</a>`)
-	anyTagOnly = regexp.MustCompile(`<[^>]+>`)
-)
+// sourceURLRe pulls the <url> every Reasonix provider emits in its sources
+// text; the **bold** line above it, when present, carries the title.
+var sourceURLRe = regexp.MustCompile(`<((?:https?://)[^>\s]+)>`)
 
 // searchCandidate is one engine hit.
 type searchCandidate struct {
@@ -60,18 +50,19 @@ func screenMaxTokens(candidates int) int {
 	return min(screenTokensCap, screenTokensPerItem*candidates+screenTokensBase)
 }
 
-// WebSearcher drives the engines, the verifier and the screening gate. The
-// provider is resolved per run so a model switch applies to screening too.
+// WebSearcher drives Reasonix's search, the verifier and the screening gate.
+// Both models resolve per run, so a settings change applies to the next
+// generation without a rebuild.
 type WebSearcher struct {
-	Engine    string // "", "auto", "bing" or "bing_web"
-	APIKey    string
-	Provider  func() (LLM, error)
-	Pricer    Pricer
-	MaxTokens int
-	// Endpoints and guard are seams for tests; production leaves them zero.
-	WebEndpoint string
-	APIEndpoint string
-	AllowHost   func(rawURL string) error
+	// SearchModel answers Reasonix's web-search selection: the provider the
+	// agent.web_search_model config routes to, plus the ref its spend prices
+	// under. (nil, "", nil) means no selection is set.
+	SearchModel func() (provider.Provider, string, error)
+	Provider    func() (LLM, error) // the screening gate's chat model
+	Pricer      Pricer
+	MaxTokens   int
+	// AllowHost is a seam for tests; production leaves it zero.
+	AllowHost func(rawURL string) error
 }
 
 // verifyGuard is the SSRF check applied per hop; tests swap it to admit
@@ -85,40 +76,7 @@ func (w *WebSearcher) guard(rawURL string) error {
 	return verifyGuard(rawURL)
 }
 
-func (w *WebSearcher) webEndpoint() string {
-	if w.WebEndpoint != "" {
-		return w.WebEndpoint
-	}
-	return bingWebEndpoint
-}
-
-func (w *WebSearcher) apiEndpoint() string {
-	if w.APIEndpoint != "" {
-		return w.APIEndpoint
-	}
-	return bingAPIEndpoint
-}
-
-// effectiveEngine applies Deep-tutor's iter-346 semantics: without a key both
-// auto and bing fall back to the free web engine rather than going silent.
-func (w *WebSearcher) effectiveEngine() string {
-	switch strings.ToLower(strings.TrimSpace(w.Engine)) {
-	case "bing_web":
-		return "bing_web"
-	case "bing":
-		if w.APIKey != "" {
-			return "bing_api"
-		}
-		return "bing_web"
-	default: // auto, ""
-		if w.APIKey != "" {
-			return "bing_api"
-		}
-		return "bing_web"
-	}
-}
-
-// searchJob is one engine call: a topic for one stage with its candidate
+// searchJob is one search call: a topic for one stage with its candidate
 // count, which difficulty raises.
 type searchJob struct {
 	stageIndex int
@@ -128,10 +86,11 @@ type searchJob struct {
 
 // SearchOutcome carries the keepers plus the warnings a person should see.
 type SearchOutcome struct {
-	Resources []Resource
-	Note      string
-	Engine    string
-	Usage     Usage // the screening gate's metered spend
+	Resources   []Resource
+	Note        string
+	Engine      string // the web-search model ref that served the run
+	Usage       Usage  // the screening gate's metered spend
+	SearchUsage Usage  // the web-search model's metered spend
 }
 
 // stageResourceCap: harder stages cite more (2+difficulty, capped).
@@ -172,90 +131,35 @@ func stageTopics(stages []Stage) [][]string {
 	return out
 }
 
-func (w *WebSearcher) engineSearch(ctx context.Context, engine, query string, count int) ([]searchCandidate, error) {
-	query = truncateRunes(query, maxQueryChars)
-	if query == "" {
-		return nil, nil
-	}
-	client := &http.Client{Timeout: bingWebTimeout}
-	if engine == "bing_api" {
-		client.Timeout = searchTimeout
-		return w.bingAPI(ctx, client, query, count)
-	}
-	return w.bingWeb(ctx, client, query, count)
-}
-
-// bingWeb scrapes the free search page: Chrome headers, a 2MB cap, and a
-// captcha/shell check so a blocked page is an error, not zero results.
-func (w *WebSearcher) bingWeb(ctx context.Context, client *http.Client, query string, count int) ([]searchCandidate, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, w.webEndpoint(), nil)
-	if err != nil {
-		return nil, err
-	}
-	q := req.URL.Query()
-	q.Set("q", query)
-	q.Set("count", fmt.Sprint(count))
-	q.Set("mkt", "zh-CN")
-	req.URL.RawQuery = q.Encode()
-	for k, v := range bingWebHeaders {
-		req.Header.Set(k, v)
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("bing web status %d", resp.StatusCode)
-	}
-	if host := resp.Request.URL.Hostname(); !strings.HasSuffix(host, "bing.com") && !strings.HasSuffix(host, w.hostOverrideSuffix()) {
-		return nil, fmt.Errorf("redirected off bing: %s", host)
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, bingWebMaxBytes+1))
-	if err != nil {
-		return nil, err
-	}
-	if len(body) > bingWebMaxBytes {
-		return nil, errors.New("tutor: bing page exceeds cap")
-	}
-	page := string(body)
-	if !strings.Contains(page, "b_results") || strings.Contains(page, "b_captcha") {
-		return nil, errors.New("tutor: bing served a captcha page")
-	}
-	return parseBingItems(page, count), nil
-}
-
-// hostOverrideSuffix admits a test endpoint's host in the redirect check.
-func (w *WebSearcher) hostOverrideSuffix() string {
-	if w.WebEndpoint == "" {
-		return ""
-	}
-	if u, err := url.Parse(w.WebEndpoint); err == nil {
-		return u.Hostname()
-	}
-	return ""
-}
-
-func parseBingItems(page string, count int) []searchCandidate {
+// parseSourceLinks reads the sources text Reasonix's providers emit — a
+// "- **Title**" line above each "<url>" bullet, or bare "<url>" bullets —
+// into candidates, deduplicated and capped.
+func parseSourceLinks(sources string, count int) []searchCandidate {
 	var out []searchCandidate
 	seen := map[string]bool{}
-	for _, m := range bingItemRe.FindAllStringSubmatch(page, -1) {
-		rawURL, rawTitle := m[1], m[2]
-		if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
+	title := ""
+	for raw := range strings.SplitSeq(sources, "\n") {
+		line := strings.TrimSpace(raw)
+		if line == "" {
 			continue
 		}
-		if strings.Contains(rawURL, "bing.com/ck/a") {
+		if strings.HasPrefix(line, "- **") && strings.HasSuffix(line, "**") {
+			title = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(line, "- **"), "**"))
 			continue
 		}
-		if seen[rawURL] {
+		m := sourceURLRe.FindStringSubmatch(line)
+		if m == nil {
 			continue
 		}
-		seen[rawURL] = true
-		title := strings.TrimSpace(anyTagOnly.ReplaceAllString(rawTitle, ""))
+		if seen[m[1]] {
+			continue
+		}
+		seen[m[1]] = true
 		if r := []rune(title); len(r) > 200 {
 			title = string(r[:200])
 		}
-		out = append(out, searchCandidate{Title: title, URL: rawURL})
+		out = append(out, searchCandidate{Title: title, URL: m[1]})
+		title = ""
 		if len(out) >= count {
 			break
 		}
@@ -263,50 +167,56 @@ func parseBingItems(page string, count int) []searchCandidate {
 	return out
 }
 
-// bingAPI queries the paid Bing Search API.
-func (w *WebSearcher) bingAPI(ctx context.Context, client *http.Client, query string, count int) ([]searchCandidate, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, w.apiEndpoint(), nil)
+// engineSearch runs one query through Reasonix's websearch tool — the same
+// request shape and result envelope the registry's web_search tool serves —
+// and reads its sources as candidates.
+func (w *WebSearcher) engineSearch(ctx context.Context, tool *websearch.Tool, query string, count int) ([]searchCandidate, error) {
+	query = truncateRunes(query, maxQueryChars)
+	if strings.TrimSpace(query) == "" {
+		return nil, nil
+	}
+	args, err := json.Marshal(map[string]string{"query": query})
 	if err != nil {
 		return nil, err
 	}
-	q := req.URL.Query()
-	q.Set("q", query)
-	q.Set("count", fmt.Sprint(count))
-	req.URL.RawQuery = q.Encode()
-	req.Header.Set("Ocp-Apim-Subscription-Key", w.APIKey)
-	resp, err := client.Do(req)
+	raw, err := tool.Execute(ctx, args)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("bing api status %d", resp.StatusCode)
-	}
-	var payload struct {
-		WebPages struct {
-			Value []struct {
-				Name string `json:"name"`
-				URL  string `json:"url"`
-			} `json:"value"`
-		} `json:"webPages"`
-	}
-	if err := json.NewDecoder(io.LimitReader(resp.Body, bingWebMaxBytes)).Decode(&payload); err != nil {
+	var result websearch.Result
+	if err := json.Unmarshal([]byte(raw), &result); err != nil {
 		return nil, err
 	}
-	var out []searchCandidate
-	for _, item := range payload.WebPages.Value {
-		out = append(out, searchCandidate{Title: item.Name, URL: item.URL})
-		if len(out) >= count {
-			break
-		}
-	}
-	return out, nil
+	return parseSourceLinks(result.Sources, count), nil
 }
 
-// Search implements Searcher with Deep-tutor's full pipeline.
+// buildSearchJobs turns the plan's stage topics into capped search jobs.
+func buildSearchJobs(q ResourceQuery) []searchJob {
+	perStage := map[int]int{}
+	var jobs []searchJob
+	for stageIndex, topics := range stageTopics(q.Stages) {
+		difficulty := 0
+		if stageIndex < len(q.Stages) {
+			difficulty = q.Stages[stageIndex].Difficulty
+		}
+		for _, topic := range topics {
+			if perStage[stageIndex] >= stageTopicCap(difficulty) {
+				break
+			}
+			count := 5
+			if difficulty > 0 {
+				count = min(3+difficulty, 8)
+			}
+			jobs = append(jobs, searchJob{stageIndex: stageIndex, topic: topic, count: count})
+			perStage[stageIndex]++
+		}
+	}
+	return jobs
+}
+
+// Search implements Searcher with the unified pipeline.
 func (w *WebSearcher) Search(ctx context.Context, q ResourceQuery) (SearchOutcome, error) {
-	outcome := SearchOutcome{Engine: w.effectiveEngine()}
-	engine := outcome.Engine
+	outcome := SearchOutcome{}
 	// The gate is mandatory: without a model there is no honest way to hand
 	// out web citations, so the searcher stays empty rather than unscreened.
 	llm, llmErr := w.provider()
@@ -314,28 +224,40 @@ func (w *WebSearcher) Search(ctx context.Context, q ResourceQuery) (SearchOutcom
 		outcome.Note = "未配置模型服务，本次未检索网络资源（引文必须经 AI 相关性筛选）"
 		return outcome, nil
 	}
-
-	perStageJobs := map[int]int{}
-	var jobs []searchJob
-	for stageIndex, topics := range stageTopics(q.Stages) {
-		difficulty := 0
-		if stageIndex < len(q.Stages) {
-			difficulty = q.Stages[stageIndex].Difficulty
+	p, ref, err := w.searchModel()
+	if err != nil {
+		reason, _ := config.WebSearchReasonOf(err)
+		if reason == "" {
+			outcome.Note = fmt.Sprintf("联网检索模型不可用（%v），本次未检索网络资源", err)
+		} else {
+			outcome.Note = fmt.Sprintf("联网检索模型不可用（%s），请在模型偏好中重新选择，本次未检索网络资源", reason)
 		}
-		limit := stageTopicCap(difficulty)
-		candCount := 5
-		if difficulty > 0 {
-			candCount = min(3+difficulty, 8)
-		}
-		for _, topic := range topics {
-			if perStageJobs[stageIndex] >= limit {
-				break
-			}
-			jobs = append(jobs, searchJob{stageIndex: stageIndex, topic: topic, count: candCount})
-			perStageJobs[stageIndex]++
-		}
+		return outcome, nil
 	}
-	results := w.runQueries(ctx, engine, jobs)
+	if p == nil {
+		outcome.Note = "未选择联网检索模型（模型偏好 → Web search），本次未检索网络资源"
+		return outcome, nil
+	}
+	outcome.Engine = ref
+
+	// One tool instance serves the whole run; the search model's spend is
+	// metered alongside the gate's so the daily budget sees it.
+	var mu sync.Mutex
+	spend := Usage{Model: ref}
+	tool := &websearch.Tool{
+		Factory: func() (provider.Provider, error) { return p, nil },
+		ReportUsage: func(u *provider.Usage) {
+			if u == nil {
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			spend.addChunkUsage(*u)
+		},
+	}
+
+	jobs := buildSearchJobs(q)
+	results := w.runQueries(ctx, tool, jobs)
 	succeeded := 0
 	for _, r := range results {
 		if r != nil {
@@ -343,10 +265,42 @@ func (w *WebSearcher) Search(ctx context.Context, q ResourceQuery) (SearchOutcom
 		}
 	}
 	if len(jobs) > 0 && succeeded == 0 {
-		outcome.Note = fmt.Sprintf("检索引擎（%s）不可用，未获得结果；请人工补充资源", engine)
+		outcome.Note = fmt.Sprintf("联网检索模型（%s）未返回结果；请检查所选模型或稍后重试", ref)
 		return outcome, nil
 	}
 
+	resources := w.screenableResources(ctx, q, jobs, results)
+	if len(resources) == 0 {
+		return outcome, nil
+	}
+	screened, note, usage := w.screen(ctx, llm, q, resources)
+	outcome.Resources = screened
+	outcome.Note = note
+	outcome.Usage = usage
+	outcome.SearchUsage = spend
+	for i := range outcome.Resources {
+		outcome.Resources[i].Snippet = ""
+	}
+	return outcome, nil
+}
+
+func (w *WebSearcher) provider() (LLM, error) {
+	if w.Provider == nil {
+		return nil, errors.New("tutor: no llm provider")
+	}
+	return w.Provider()
+}
+
+func (w *WebSearcher) searchModel() (provider.Provider, string, error) {
+	if w.SearchModel == nil {
+		return nil, "", nil
+	}
+	return w.SearchModel()
+}
+
+// screenableResources verifies the deduplicated pool and keeps the valid,
+// per-stage-capped survivors for the gate.
+func (w *WebSearcher) screenableResources(ctx context.Context, q ResourceQuery, jobs []searchJob, results [][]searchCandidate) []Resource {
 	type stagedCandidate struct {
 		stageIndex int
 		candidate  searchCandidate
@@ -368,7 +322,6 @@ func (w *WebSearcher) Search(ctx context.Context, q ResourceQuery) (SearchOutcom
 		}
 	}
 	verdicts := w.verifyAll(ctx, firstStage)
-
 	var resources []Resource
 	perStage := map[int]int{}
 	for _, item := range pool {
@@ -397,30 +350,12 @@ func (w *WebSearcher) Search(ctx context.Context, q ResourceQuery) (SearchOutcom
 		})
 		perStage[item.stageIndex]++
 	}
-	if len(resources) == 0 {
-		return outcome, nil
-	}
-
-	screened, note, usage := w.screen(ctx, llm, q, resources)
-	outcome.Resources = screened
-	outcome.Note = note
-	outcome.Usage = usage
-	for i := range outcome.Resources {
-		outcome.Resources[i].Snippet = ""
-	}
-	return outcome, nil
+	return resources
 }
 
-func (w *WebSearcher) provider() (LLM, error) {
-	if w.Provider == nil {
-		return nil, errors.New("tutor: no llm provider")
-	}
-	return w.Provider()
-}
-
-// runQueries fans the engine calls out at the searched-for concurrency,
+// runQueries fans the search calls out at the searched-for concurrency,
 // keeping each failure local: one dead topic never kills the batch.
-func (w *WebSearcher) runQueries(ctx context.Context, engine string, jobs []searchJob) [][]searchCandidate {
+func (w *WebSearcher) runQueries(ctx context.Context, tool *websearch.Tool, jobs []searchJob) [][]searchCandidate {
 	results := make([][]searchCandidate, len(jobs))
 	sem := make(chan struct{}, searchConcurrency)
 	var wg sync.WaitGroup
@@ -430,7 +365,7 @@ func (w *WebSearcher) runQueries(ctx context.Context, engine string, jobs []sear
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			found, err := w.engineSearch(ctx, engine, topic, count)
+			found, err := w.engineSearch(ctx, tool, topic, count)
 			if err == nil {
 				results[i] = found
 			}
@@ -438,6 +373,15 @@ func (w *WebSearcher) runQueries(ctx context.Context, engine string, jobs []sear
 	}
 	wg.Wait()
 	return results
+}
+
+// verifyClient answers the fetch client for verification: dial-time guarded
+// in production, plain under the test seam (loopback fixtures).
+func (w *WebSearcher) verifyClient() *http.Client {
+	if w.AllowHost != nil {
+		return &http.Client{Timeout: verifyTimeout}
+	}
+	return publicOnlyClient(verifyTimeout)
 }
 
 // verifyAll checks the deduplicated candidate URLs concurrently.
@@ -449,6 +393,7 @@ func (w *WebSearcher) verifyAll(ctx context.Context, firstStage map[string]int) 
 	sort.Strings(urls)
 	verdicts := make(map[string]verifyVerdict, len(urls))
 	sem := make(chan struct{}, verifyConcurrency)
+	client := w.verifyClient()
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	for _, rawURL := range urls {
@@ -457,7 +402,6 @@ func (w *WebSearcher) verifyAll(ctx context.Context, firstStage map[string]int) 
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			client := &http.Client{Timeout: verifyTimeout}
 			verdict := verifyURL(ctx, client, rawURL, w.guard)
 			mu.Lock()
 			verdicts[rawURL] = verdict
@@ -473,5 +417,5 @@ func truncateRunes(s string, n int) string {
 	if len(r) > n {
 		return string(r[:n])
 	}
-	return string(r)
+	return s
 }

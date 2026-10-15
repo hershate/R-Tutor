@@ -17,6 +17,8 @@ import (
 	"sync"
 	"time"
 
+	"reasonix/internal/assembly/boot"
+	"reasonix/internal/base/netclient"
 	"reasonix/internal/contract/config"
 	"reasonix/internal/contract/pricing"
 	"reasonix/internal/contract/provider"
@@ -93,13 +95,20 @@ func tutorPricerFromConfig() tutor.Pricer {
 	}
 }
 
-// tutorSearcherFromConfig builds the web searcher. The engine and key come
-// from the environment, Deep-tutor's .env surface: TUTOR_SEARCH_ENGINE
-// (auto|bing|bing_web) and BING_API_KEY.
+// tutorSearcherFromConfig routes the tutor's web search through Reasonix's
+// unified scheme: the agent.web_search_model selection, resolved per run so
+// a settings change reaches the next generation. Construction is boot's —
+// the same routing the registry's web_search tool uses — so model
+// selection, credentials, and proxy have exactly one manager.
 func tutorSearcherFromConfig() tutor.Searcher {
 	return &tutor.WebSearcher{
-		Engine:   os.Getenv("TUTOR_SEARCH_ENGINE"),
-		APIKey:   os.Getenv("BING_API_KEY"),
+		SearchModel: func() (provider.Provider, string, error) {
+			cfg, err := config.Load()
+			if err != nil {
+				return nil, "", fmt.Errorf("tutor: config: %w", err)
+			}
+			return boot.NewWebSearchModel(cfg, netclient.ProxySpec{Mode: netclient.ModeAuto})
+		},
 		Provider: tutorProviderFromConfig,
 	}
 }
