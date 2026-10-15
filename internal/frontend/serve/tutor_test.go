@@ -220,6 +220,18 @@ func TestTutorEmptyListsAreArrays(t *testing.T) {
 	}
 }
 
+// An export with nothing to carry — an empty library, or a filter that
+// matches nothing — refuses cleanly; a bare 500 here once leaked through.
+func TestTutorKbExportEmptyRefuses(t *testing.T) {
+	_, srv, _ := newTutorTestServer(t)
+	for _, path := range []string{"/tutor/kb/export", "/tutor/kb/export?ids=nope"} {
+		resp, body := tutorGet(t, srv, path)
+		if resp.StatusCode != http.StatusBadRequest || !strings.Contains(body, "tutor.kb_export_empty") {
+			t.Fatalf("%s: %d %s", path, resp.StatusCode, body)
+		}
+	}
+}
+
 func TestTutorEndpointsEndToEnd(t *testing.T) {
 	_, srv, _ := newTutorTestServer(t)
 

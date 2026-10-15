@@ -2,7 +2,6 @@ package tutor
 
 import (
 	"archive/zip"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -39,7 +38,7 @@ func (s *Service) KbExportZip(ids []string) (string, int, error) {
 		selected = append(selected, doc)
 	}
 	if len(selected) == 0 {
-		return "", 0, errors.New("tutor: kb export is empty")
+		return "", 0, ErrKbExportEmpty
 	}
 
 	tmp, err := os.CreateTemp("", "kb-export-*.zip")

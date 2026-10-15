@@ -30,13 +30,14 @@ const parsedScanMaxDocs = 50
 
 // KB refusals beyond the shared sentinels.
 var (
-	ErrKbQuota      = errors.New("tutor: kb document quota exceeded")
-	ErrKbEmpty      = errors.New("tutor: kb content is empty")
-	ErrKbTooLarge   = errors.New("tutor: kb input exceeds its cap")
-	ErrKbParsing    = errors.New("tutor: this kb document is already parsing")
-	ErrKbNoOriginal = errors.New("tutor: this kb document has no original")
-	ErrKbNoDocs     = errors.New("tutor: no usable kb documents")
-	ErrBadKind      = errors.New("tutor: unknown material kind")
+	ErrKbQuota       = errors.New("tutor: kb document quota exceeded")
+	ErrKbEmpty       = errors.New("tutor: kb content is empty")
+	ErrKbTooLarge    = errors.New("tutor: kb input exceeds its cap")
+	ErrKbParsing     = errors.New("tutor: this kb document is already parsing")
+	ErrKbNoOriginal  = errors.New("tutor: this kb document has no original")
+	ErrKbNoDocs      = errors.New("tutor: no usable kb documents")
+	ErrKbExportEmpty = errors.New("tutor: kb export is empty")
+	ErrBadKind       = errors.New("tutor: unknown material kind")
 )
 
 // KbMeta carries parse provenance and flow markers.
