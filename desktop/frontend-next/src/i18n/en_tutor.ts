@@ -247,3 +247,35 @@ export const EN_TUTOR: Record<string, string> = {
   "部分内容超限未导入：{items}": "Some items exceeded a cap and were skipped: {items}",
   "备份是整个导师库的单文件 JSON：会话、方案、测验作答、进度、讲义、笔记与知识库；模型配置与密钥不在其中。": "A backup is one JSON file of the whole tutor library: sessions, plans, quiz attempts, progress, study materials, notes, and the knowledge base; model config and keys stay out.",
 };
+
+// The staged-material rows and the learning-data card on Home, plus the
+// wrong drill in the quiz tab.
+export const EN_TUTOR_HOME_DATA: Record<string, string> = {
+  "附加资料（可选）": "Attach material (optional)",
+  "选择文件": "Choose files",
+  "处理资料 {n}/{m}": "Preparing material {n}/{m}",
+  "抓取网页 {n}/{m}": "Fetching pages {n}/{m}",
+  "网页正文": "page text",
+  "完整解析": "Full parse",
+  "快速解析": "Fast parse",
+  "仅添加": "Add only",
+  "{name} 的解析方式": "Parse effort for {name}",
+  "文件支持 PDF、DOCX、PPTX、EPUB、Markdown 与纯文本；扫描版 PDF 没有文字层会被拒绝，先打印成文本再试。":
+    "Files can be PDF, DOCX, PPTX, EPUB, Markdown or plain text; a scanned PDF has no text layer and is refused — print it to text first.",
+  "学习数据": "Learning data",
+  "连胜 {n} 天": "{n}-day streak",
+  "累计 {n} 小时": "{n} hours total",
+  "近 12 周学习打卡": "Check-ins over the last 12 weeks",
+  "{n} 分钟": "{n} min",
+  "今日到期 {n} 项": "{n} due today",
+  "错题 {n} 道": "{n} wrong",
+  "{n} 道错题": "{n} wrong",
+  "取本方案错题": "Load this plan's wrong book",
+  "刷新错题": "Refresh wrong book",
+  "答错的选择题会进错题本；这里逐题重答，答对即出本。":
+    "Wrongly-answered choice questions land in the wrong book; re-answer them here — a right answer takes one out.",
+  "这一方案没有错题。": "No wrong answers in this plan.",
+  "答对了，这题出了错题本。": "Correct — this one left the wrong book.",
+  "累计作答 {n} 次": "{n} answers total",
+  "正确率 {pct}%": "{pct}% correct",
+};

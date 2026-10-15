@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "../testkit";
 import { MockPort } from "../../port/mock";
 import type { AgentPort } from "../../port/port";
 import { Tutor } from "./Tutor";
+import { QuizPanel } from "./QuizPanel";
 import type { TutorView } from "./Tutor";
 
 afterEach(cleanup);
@@ -191,4 +192,93 @@ it("files a text document and asks the knowledge base about it", async () => {
   await waitFor(() => {
     expect(screen.getByText("什么是所有权？")).toBeTruthy();
   });
+});
+
+// ── The home surface's coverage: staged materials, the learning-data card,
+//    the review overview, and the per-plan wrong drill. ──────────────────
+it("stages material rows and sends them with the goal", async () => {
+  const user = userEvent.setup();
+  const port = new MockPort() as unknown as AgentPort;
+  const upload = vi.spyOn(port, "tutorMaterialUpload");
+  const confirm = vi.spyOn(port, "tutorMaterialConfirm");
+  const addUrl = vi.spyOn(port, "tutorMaterialURL");
+  const views: TutorView[] = [{ k: "home" }];
+  const tree = (v: TutorView) => (
+    <Tutor port={port} view={v} onGo={go} onChat={() => undefined} onSettings={() => undefined} onError={() => undefined} />
+  );
+  let rerender: (v: TutorView) => void = () => undefined;
+  const go = (v: TutorView) => {
+    views[0] = v;
+    rerender(v);
+  };
+  const utils = render(tree(views[0]!));
+  rerender = (v) => utils.rerender(tree(v));
+
+  await user.type(await screen.findByPlaceholderText(/用一段话描述你的学习目标/), "三个月学会 Rust");
+  // A web page rides the session as fetched text.
+  await user.type(screen.getByPlaceholderText("https://"), "https://example.com/rust-book");
+  await user.click(screen.getByRole("button", { name: "添加网页" }));
+  expect(screen.getByText("https://example.com/rust-book")).toBeTruthy();
+  // A file rides it with the parse effort its row chose.
+  const file = new File(["# Rust 概览"], "rust.md", { type: "text/markdown" });
+  const input = document.querySelector('input[data-action="tutor.mat-file"]') as HTMLInputElement;
+  fireEvent.change(input, { target: { files: [file] } });
+  await user.selectOptions(screen.getByLabelText("rust.md 的解析方式"), "fast");
+  await user.click(screen.getByRole("button", { name: "制定学习方案" }));
+
+  await screen.findByText("正在生成你的学习方案");
+  await waitFor(() => {
+    expect(upload).toHaveBeenCalledWith(expect.any(String), "rust.md", expect.any(String));
+    expect(confirm).toHaveBeenCalledWith(expect.any(String), expect.any(String), "fast");
+    expect(addUrl).toHaveBeenCalledWith(expect.any(String), "https://example.com/rust-book");
+  });
+});
+
+it("renders the learning-data card from the ledger", async () => {
+  const port = new MockPort() as unknown as AgentPort;
+  const today = new Date();
+  const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  port.tutorStatsSummary = vi.fn(async () => ({ total_minutes: 120, today_minutes: 30, streak_days: 4, checkin_days: 9 }));
+  port.tutorStatsCalendar = vi.fn(async () => ({ [key]: 45 }));
+  port.tutorStatsByPlan = vi.fn(async () => [{ plan_id: "p1", topic: "Rust 入门", minutes: 80 }]);
+  render(<Tutor port={port} view={{ k: "home" }} onGo={() => undefined} onChat={() => undefined} onSettings={() => undefined} onError={() => undefined} />);
+  expect(await screen.findByText("学习数据")).toBeTruthy();
+  expect(screen.getByText("连胜 4 天")).toBeTruthy();
+  expect(screen.getByText("打卡 9 天")).toBeTruthy();
+  // Twelve weeks of days, one cell each.
+  const heat = document.querySelector(".tut-heat")!;
+  expect(heat.querySelectorAll("i")).toHaveLength(84);
+  expect(heat.querySelector('i[data-level="2"]')).toBeTruthy();
+  expect(screen.getByText("Rust 入门")).toBeTruthy();
+  expect(screen.getByText("80 分钟")).toBeTruthy();
+});
+
+it("shows the day's due and the wrong-book overview with plan jumps", async () => {
+  const port = new MockPort() as unknown as AgentPort;
+  port.tutorReviewDue = vi.fn(async () => ({ items: [], total: 3 }));
+  port.tutorWrongOverview = vi.fn(async () => ({ total: 5, items: [{ plan_id: "p1", topic: "React 基础", count: 5 }] }));
+  const goes: TutorView[] = [];
+  render(<Tutor port={port} view={{ k: "review" }} onGo={(v) => goes.push(v)} onChat={() => undefined} onSettings={() => undefined} onError={() => undefined} />);
+  expect(await screen.findByText("今日到期 3 项")).toBeTruthy();
+  expect(screen.getByText("错题 5 道")).toBeTruthy();
+  await userEvent.click(screen.getByRole("button", { name: /React 基础/ }));
+  expect(goes[0]).toEqual({ k: "plan", pid: "p1", tab: "quiz" });
+});
+
+it("drills a plan's wrong book through the server's judgement", async () => {
+  const user = userEvent.setup();
+  const port = new MockPort() as unknown as AgentPort;
+  port.tutorQuizzes = vi.fn(async () => ({ title: "", quiz_count: 0, quizzes: [] }));
+  port.tutorQuizWrong = vi.fn(async () => ({
+    total: 1,
+    items: [{ id: "q9", plan_id: "p1", node_id: "n1", type: "choice" as const, question: "Rust 的所有权规则是哪个？", options: ["一份数据只有一个所有者", "随便几个所有者"], answer: "一份数据只有一个所有者" }],
+  }));
+  port.tutorQuizSubmit = vi.fn(async () => ({ correct: true }));
+  render(<QuizPanel port={port} pid="p1" onError={() => undefined} />);
+  await user.click(await screen.findByRole("button", { name: "取本方案错题" }));
+  expect(await screen.findByText(/Rust 的所有权规则是哪个？/)).toBeTruthy();
+  await user.click(screen.getByRole("radio", { name: /一份数据只有一个所有者/ }));
+  await user.click(screen.getByRole("button", { name: "判定" }));
+  expect(await screen.findByText(/出了错题本/)).toBeTruthy();
+  expect(port.tutorQuizSubmit).toHaveBeenCalledWith("q9", "p1", "一份数据只有一个所有者");
 });

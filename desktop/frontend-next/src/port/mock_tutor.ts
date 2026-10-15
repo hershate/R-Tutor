@@ -105,7 +105,7 @@ export class MockTutor extends MockWorkspace {
       status: "pending", created_at: new Date().toISOString(),
     });
   }
-  tutorMaterialConfirm(sid: string, mid: string, parseMode: "full" | "fast"): Promise<TutorMaterial> {
+  tutorMaterialConfirm(sid: string, mid: string, parseMode: "full" | "fast" | "none"): Promise<TutorMaterial> {
     return Promise.resolve({
       id: mid, session_id: sid, kind: "file", source: "demo.md",
       parse_mode: parseMode, status: "confirmed", created_at: new Date().toISOString(),

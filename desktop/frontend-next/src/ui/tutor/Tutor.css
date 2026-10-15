@@ -196,3 +196,29 @@ button.tut-chip { cursor: pointer; }
 @media (min-width: 900px) {
   .tut-kb { flex-direction: row; align-items: flex-start; }
 }
+
+/* ── The home data card and the staged-material rows ─────────────────── */
+
+.tut-mats { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.tut-mats li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.tut-mat-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tut-mats select { font-size: 12px; }
+.tut-url-add { display: inline-flex; gap: 6px; flex: 1; min-width: 220px; }
+.tut-url-add input { flex: 1; min-width: 0; }
+
+/* Twelve weeks of days. Cells are ink-mixed so the calendar reads in the
+   theme without carrying a palette of its own. */
+.tut-heat { display: flex; gap: 3px; margin: 10px 0 2px; }
+.tut-heat-col { display: flex; flex-direction: column; gap: 3px; }
+.tut-heat i {
+  width: 10px; height: 10px; border-radius: 2px; background: var(--line);
+}
+.tut-heat i[data-level="1"] { background: color-mix(in srgb, var(--ink, currentColor) 25%, var(--line)); }
+.tut-heat i[data-level="2"] { background: color-mix(in srgb, var(--ink, currentColor) 55%, var(--line)); }
+.tut-heat i[data-level="3"] { background: color-mix(in srgb, var(--ink, currentColor) 85%, var(--line)); }
+.tut-heat i[data-level="future"] { opacity: 0; pointer-events: none; }
+
+.tut-meters { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.tut-meters li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.tut-meter { flex: 1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.tut-meter i { display: block; height: 100%; border-radius: 3px; background: color-mix(in srgb, var(--ink, currentColor) 55%, var(--line)); }

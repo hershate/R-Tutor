@@ -626,6 +626,13 @@ export const ACTIONS: UIAction[] = [
   { id: "tutor.daily", kind: "view", target: "none", proof: "interaction" },
   { id: "tutor.deadline", kind: "view", target: "none", proof: "interaction" },
   { id: "tutor.start", kind: "kernel-mutation", target: "none", proof: "interaction" },
+  // The staged-material rows: local until the start button sends them, so
+  // these steer the draft, not the kernel.
+  { id: "tutor.mat-file", kind: "view", target: "none", proof: "interaction" },
+  { id: "tutor.mat-url", kind: "view", target: "none", proof: "interaction" },
+  { id: "tutor.mat-url-add", kind: "view", target: "none", proof: "interaction" },
+  { id: "tutor.mat-mode", kind: "view", target: "none", proof: "interaction" },
+  { id: "tutor.mat-del", kind: "view", target: "none", proof: "interaction" },
   { id: "tutor.reattach", kind: "kernel-mutation", target: "entity", proof: "interaction" },
   { id: "tutor.cancel", kind: "kernel-mutation", target: "entity", proof: "interaction" },
   { id: "tutor.retry", kind: "kernel-mutation", target: "entity", proof: "interaction" },
@@ -653,6 +660,12 @@ export const ACTIONS: UIAction[] = [
   { id: "tutor.quiz-gen", kind: "kernel-mutation", target: "entity", proof: "interaction" },
   { id: "tutor.quiz-pick", kind: "interaction", target: "entity", proof: "interaction" },
   { id: "tutor.quiz-judge", kind: "kernel-mutation", target: "entity", proof: "interaction" },
+  // The wrong drill: the plan's wrong book, re-answered under the server's
+  // judgement — a right answer is what takes the row out.
+  { id: "tutor.quiz-wrong", kind: "view", target: "entity", proof: "interaction" },
+  { id: "tutor.wrong-pick", kind: "interaction", target: "entity", proof: "interaction" },
+  { id: "tutor.wrong-judge", kind: "kernel-mutation", target: "entity", proof: "interaction" },
+  { id: "tutor.wrong-plan", kind: "navigation", target: "entity", proof: "interaction" },
   { id: "tutor.quiz-reveal", kind: "view", target: "entity", proof: "interaction" },
   { id: "tutor.mat-gen", kind: "kernel-mutation", target: "entity", proof: "interaction" },
   { id: "tutor.mat-refresh", kind: "kernel-mutation", target: "entity", proof: "interaction" },

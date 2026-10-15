@@ -666,7 +666,7 @@ export interface AgentPort {
   tutorMaterialText(sid: string, name: string, content: string): Promise<TutorMaterial>;
   tutorMaterialURL(sid: string, url: string): Promise<TutorMaterial>;
   tutorMaterialUpload(sid: string, filename: string, contentBase64: string): Promise<TutorMaterial>;
-  tutorMaterialConfirm(sid: string, mid: string, parseMode: "full" | "fast"): Promise<TutorMaterial>;
+  tutorMaterialConfirm(sid: string, mid: string, parseMode: "full" | "fast" | "none"): Promise<TutorMaterial>;
   tutorMaterialParse(sid: string, mid: string): Promise<TutorMaterial>;
   tutorMaterialDelete(sid: string, mid: string): Promise<void>;
   tutorCancel(sid: string): Promise<void>;

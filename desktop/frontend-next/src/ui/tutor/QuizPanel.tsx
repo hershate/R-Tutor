@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { t } from "../../i18n";
 import { reason } from "../../i18n/kernel";
 import type { AgentPort } from "../../port/port";
-import type { TutorQuizItem } from "../../port/tutor";
+import type { TutorQuizItem, TutorQuizStats, TutorWrongItem } from "../../port/tutor";
 
 // The quiz panel: a quiz run as a tab. Choice questions are
 // judged by the server; fill/short/essay reveal a reference answer for
 // self-assessment. When every choice is judged, per-node accuracy is written
-// back as progress — score ≥ 0.8 marks the node done.
+// back as progress — score ≥ 0.8 marks the node done. Below the run sits the
+// wrong drill: this plan's wrongly-answered questions, re-answered until the
+// server judges them right — which is what takes them out of the book.
 interface Props {
   port: AgentPort;
   pid: string;
@@ -22,9 +24,14 @@ export function QuizPanel({ port, pid, onError }: Props) {
   const [picked, setPicked] = useState<Record<string, string>>({});
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [wrongs, setWrongs] = useState<TutorWrongItem[] | null>(null);
+  const [wrongPicked, setWrongPicked] = useState<Record<string, string>>({});
+  const [wrongVerdicts, setWrongVerdicts] = useState<Record<string, boolean | null>>({});
+  const [stats, setStats] = useState<TutorQuizStats | null>(null);
 
   useEffect(() => {
     port.tutorQuizzes(pid).then((set) => setItems(set.quizzes)).catch(() => setItems([]));
+    port.tutorQuizStats(pid).then(setStats).catch(() => setStats(null));
   }, [port, pid]);
 
   const generate = async () => {
@@ -77,6 +84,30 @@ export function QuizPanel({ port, pid, onError }: Props) {
   const choiceTotal = (items ?? []).filter((q) => q.type === "choice").length;
   const choiceHit = (items ?? []).filter((q) => verdicts[q.id]?.correct === true).length;
 
+  // The wrong drill reads the plan's wrong book on demand and re-judges each
+  // answer through the same submit endpoint — a right answer is what clears
+  // the row, so the drill is honest about needing the server, not a local tick.
+  const loadWrong = () => {
+    port.tutorQuizWrong(pid)
+      .then((r) => {
+        setWrongs(r.items);
+        setWrongPicked({});
+        setWrongVerdicts({});
+      })
+      .catch((e) => onError(reason(e)));
+  };
+
+  const judgeWrong = async (item: TutorWrongItem) => {
+    const selected = wrongPicked[item.id];
+    if (!selected || wrongVerdicts[item.id] !== undefined) return;
+    try {
+      const verdict = await port.tutorQuizSubmit(item.id, pid, selected);
+      setWrongVerdicts((v) => ({ ...v, [item.id]: verdict.correct === true }));
+    } catch (e) {
+      onError(reason(e));
+    }
+  };
+
   return (
     <div className="tut-card">
       <header className="tut-plan-hd">
@@ -86,6 +117,11 @@ export function QuizPanel({ port, pid, onError }: Props) {
         </button>
       </header>
       {choiceTotal > 0 && <p className="tut-dim">{t("选择题得分 {hit}/{total}", { hit: choiceHit, total: choiceTotal })}</p>}
+      {stats !== null && stats.attempts > 0 && (
+        <p className="tut-dim">
+          {t("累计作答 {n} 次", { n: stats.attempts })} · {t("正确率 {pct}%", { pct: Math.round((stats.accuracy ?? 0) * 100) })}
+        </p>
+      )}
       {items === null && <p className="tut-dim">{t("读取中…")}</p>}
       {items?.length === 0 && <p className="tut-dim">{t("还没有题目，点上面的按钮生成。")}</p>}
       {(items ?? []).map((q, i) => {
@@ -132,6 +168,49 @@ export function QuizPanel({ port, pid, onError }: Props) {
                   ? <p className="tut-ok">{t("参考答案：{answer}", { answer: q.answer })}</p>
                   : <button type="button" data-action="tutor.quiz-reveal" onClick={() => setRevealed((r) => ({ ...r, [q.id]: true }))}>{t("显示参考答案")}</button>}
               </>
+            )}
+          </div>
+        );
+      })}
+
+      <header className="tut-plan-hd">
+        <h3>{t("错题重练")}</h3>
+        <button type="button" data-action="tutor.quiz-wrong" onClick={loadWrong}>
+          {wrongs === null ? t("取本方案错题") : t("刷新错题")}
+        </button>
+      </header>
+      {wrongs === null && <p className="tut-dim">{t("答错的选择题会进错题本；这里逐题重答，答对即出本。")}</p>}
+      {wrongs?.length === 0 && <p className="tut-dim">{t("这一方案没有错题。")}</p>}
+      {(wrongs ?? []).map((item, i) => {
+        const ok = wrongVerdicts[item.id];
+        return (
+          <div className="tut-quiz" key={item.id}>
+            <p className="tut-quiz-q">
+              <strong>{i + 1}.</strong> {item.question}
+              {item.wrong_at && <span className="tut-dim"> · {new Date(item.wrong_at).toLocaleDateString()}</span>}
+            </p>
+            <div role="radiogroup" aria-label={item.question}>
+              {(item.options ?? []).map((opt, j) => (
+                <label key={j} className="tut-opt">
+                  <input
+                    type="radio" name={`wrong-${item.id}`} data-action="tutor.wrong-pick"
+                    disabled={ok !== undefined}
+                    checked={wrongPicked[item.id] === opt}
+                    onChange={() => setWrongPicked((p) => ({ ...p, [item.id]: opt }))}
+                  />
+                  <span className="tut-opt-badge">{j + 1}</span> {opt}
+                </label>
+              ))}
+            </div>
+            {ok === undefined && (
+              <button type="button" data-action="tutor.wrong-judge" disabled={!wrongPicked[item.id]} onClick={() => void judgeWrong(item)}>
+                {t("判定")}
+              </button>
+            )}
+            {ok !== undefined && (
+              <p className={ok ? "tut-ok" : "tut-error"}>
+                {ok ? `✓ ${t("答对了，这题出了错题本。")}` : `✕ ${item.answer ? t("正确答案：{answer}", { answer: item.answer }) : t("再想想")}`}
+              </p>
             )}
           </div>
         );

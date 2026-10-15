@@ -121,7 +121,7 @@ export interface TutorMaterial {
   session_id: string;
   kind: "file" | "text" | "url" | "image" | "audio" | "video";
   source: string;
-  parse_mode?: "full" | "fast";
+  parse_mode?: "full" | "fast" | "none";
   status: "pending" | "confirmed" | "parsed";
   chars?: number;
   error?: string;
@@ -304,7 +304,7 @@ export interface TutorKbDoc {
   has_original: boolean;
   parsed_chars?: number;
   status: "pending" | "confirmed" | "parsed";
-  parse_mode?: "full" | "fast";
+  parse_mode?: "full" | "fast" | "none";
   meta: {
     source_type?: string;
     parser?: string;

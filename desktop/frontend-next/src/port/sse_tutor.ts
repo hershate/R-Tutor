@@ -47,7 +47,7 @@ export class SseTutor extends SseWorkspace {
       filename, content_base64: contentBase64,
     });
   }
-  tutorMaterialConfirm(sid: string, mid: string, parseMode: "full" | "fast") {
+  tutorMaterialConfirm(sid: string, mid: string, parseMode: "full" | "fast" | "none") {
     return this.post0<TutorMaterial>(`/tutor/sessions/${encodeURIComponent(sid)}/materials/${encodeURIComponent(mid)}/confirm`, { parse_mode: parseMode });
   }
   tutorMaterialParse(sid: string, mid: string) {

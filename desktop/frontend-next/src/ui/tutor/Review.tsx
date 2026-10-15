@@ -22,10 +22,17 @@ const MODES: { key: Mode; label: () => string }[] = [
   { key: "quiz", label: () => t("错题") },
 ];
 
+interface Overview {
+  due: number;
+  wrongTotal: number;
+  wrongByPlan: { plan_id: string; topic: string; count: number }[];
+}
+
 export function Review({ port, onGo, onError }: Props) {
   const [mode, setMode] = useState<Mode>(() => (localStorage.getItem("tutor_review_mode") as Mode) ?? "all");
   const [cards, setCards] = useState<TutorReviewItem[]>([]);
   const [wrongs, setWrongs] = useState<TutorWrongItem[]>([]);
+  const [overview, setOverview] = useState<Overview | null>(null);
   const [at, setAt] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [counts, setCounts] = useState({ forgot: 0, fuzzy: 0, remembered: 0, quizRight: 0, quizWrong: 0 });
@@ -39,6 +46,10 @@ export function Review({ port, onGo, onError }: Props) {
   const load = () => {
     port.tutorReviewQueue(50).then((q) => setCards(q.items)).catch((e) => onError(reason(e)));
     port.tutorWrongQueue(50).then((q) => setWrongs(q.items)).catch(() => setWrongs([]));
+    // The day's shape, separate from the queue the flow below walks: how much
+    // is due today, and where the wrong answers live.
+    port.tutorReviewDue(1).then((d) => setOverview((o) => ({ ...(o ?? { wrongTotal: 0, wrongByPlan: [] }), due: d.total }))).catch(() => undefined);
+    port.tutorWrongOverview().then((w) => setOverview((o) => ({ due: o?.due ?? 0, wrongTotal: w.total, wrongByPlan: w.items }))).catch(() => undefined);
     setAt(0);
     setFlipped(false);
     setDone(false);
@@ -106,6 +117,29 @@ export function Review({ port, onGo, onError }: Props) {
 
   return (
     <div className="tut-page">
+      {overview && (overview.due > 0 || overview.wrongTotal > 0) && (
+        <div className="tut-card">
+          <p className="tut-chips">
+            <span>{t("今日到期 {n} 项", { n: overview.due })}</span>
+            <span>{t("错题 {n} 道", { n: overview.wrongTotal })}</span>
+          </p>
+          {overview.wrongByPlan.length > 0 && (
+            <ul className="tut-list">
+              {overview.wrongByPlan.map((w) => (
+                <li key={w.plan_id}>
+                  <button
+                    type="button" data-action="tutor.wrong-plan"
+                    onClick={() => onGo({ k: "plan", pid: w.plan_id, tab: "quiz" })}
+                  >
+                    {w.topic || w.plan_id}
+                    <span className="tut-dim"> · {t("{n} 道错题", { n: w.count })} →</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       <div className="tut-card">
         <div className="tut-filter" role="group" aria-label={t("复习范围")}>
           {MODES.map((m) => (
