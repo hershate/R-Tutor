@@ -117,6 +117,23 @@ Checklist 全 ✅，Deep Tutor 语义逐条对位移植。架构与映射决策�
 - 坑位：`reasonix web` 的 -addr 而非 -addr/-port 混写；remote/ 令牌文件取最新要按
   mtime（ls -t），字典序会拿到旧 pid 的令牌 → assets 401 → 卡「正在连接内核…」
 
+**性能优化第 10 轮（2026-10-16 凌晨，/goal 持续性能优化，面：i18n 按语言拆分）**：
+
+- zh 恒等（中文即 key），只有 en 需要目录；语言会话期固定（切换=adopt 整窗
+  reload）→ 目录可首帧前并行拉取，zh 窗口根本不拉
+- perf：i18n/index.ts 去顶层 import EN，load(fixed) 仅 en 动态 import（目录记忆
+  化，重复 boot 同步还原）；main.tsx loadLang(bootLang()) 与 pick() 一起
+  Promise.all 后首渲染。eager JS 883.4→570.5KB（对基线累计 -56.4%，gzip -58.9%），
+  en 目录 313KB 转懒块
+- 测试侧与生产同款：显式 en 站点 await load(boot())；testsetup 每文件 preload
+  目录进记忆（不动当前字典，未 boot 文件仍恒等 zh）——jsdom navigator 为英文的
+  隐式 en 套件（modelpicker/effort_catalog）无需各自加载
+- 验证：tsc 0 / vitest 548×4673 全绿 / CDP 实机：zh 默认 0 次 en-*.js 请求；
+  内核 config language=en 时 adopt 落英文、目录恰拉一次；en 下 #chat 懒载正常
+- 坑位：CDP 里手改 localStorage rx-lang 会被 adopt() 按内核 config 弹回——验证
+  EN 要改 REASONIX_HOME 的 config.toml [desktop] language 并重启 web；#chat 哈希
+  仅挂载时消费，翻转要带哈希整页导航而非 hashchange
+
 ## 闸门口径（复核用）
 
 make lint（golangci 0 issues + repolint clean 2693 零加宽）；make check；tutor 全包
