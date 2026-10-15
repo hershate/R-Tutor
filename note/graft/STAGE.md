@@ -57,3 +57,10 @@ kb/export 400、wrong-queue 带 answer、空态刷新按钮，全部通过，存
 make lint（golangci 0 issues + repolint clean 2698 零加宽）；make check；tutor 全包
 （-race 约 23s）；serve 全量（约 640s）；boot 用 -timeout 25m（本机 AV 慢，默认 10m 会假
 警铃）；前端 tsc + vitest（548 文件）。大套件勿并发跑。
+
+**本机已知假警铃（2026-10-15 夜实测，基线 f02046adb 无本地改动同样复现）**：①
+t.TempDir() 清理竞态——unlinkat 报 "directory is not empty"，AV/索引器对临时目录
+持有 delete-pending 句柄所致，测试本体 0.02–0.03s 全过、随机分布在不同测试
+（SharedPlanView*/SlidesSpec/ShareOrphan 等），格率约 3/10，重跑即绿，与代码无关；
+② 高负载下 TestServiceGenerateAttachAndTerminalReplay 偶发 "stream stalled"（10s
+时序门），独占重跑即绿。判定失败先看失败行是不是 TempDir cleanup/时序门。
