@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { Market } from "./Market";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort, MarketDetail, MarketPackage, MarketPlan } from "../port/port";
 
 afterEach(() => { cleanup(); localStorage.setItem(STORAGE, "zh"); boot(); });
@@ -54,7 +54,7 @@ async function fixture(unreviewed = false, applied = false, partial = false) {
 }
 
 it.each(["zh", "en"].flatMap((lang) => [false, true].map((unreviewed) => ({ lang, unreviewed }))))("reads current details before retrying a failed market install ($lang, unreviewed=$unreviewed)", async ({ lang, unreviewed }) => {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const f = await fixture(unreviewed);
   const read = deferred<MarketDetail>();
   f.read.mockImplementationOnce(() => read.promise);
@@ -112,7 +112,7 @@ it("recovers a failed detail refresh without replaying the consumed installation
 });
 
 it.each(["zh", "en"].flatMap((lang) => [false, true].map((unreviewed) => ({ lang, unreviewed }))))("keeps failed items reachable when a partial install records the current version ($lang, unreviewed=$unreviewed)", async ({ lang, unreviewed }) => {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const f = await fixture(unreviewed, true, true);
   f.read.mockResolvedValueOnce({ ...f.detail, installed: { version: "1.0.0", contentHash: f.original.contentDigest! } });
   f.install.mockResolvedValueOnce({ ...f.fresh, ok: false, applied: true, status: "partial",

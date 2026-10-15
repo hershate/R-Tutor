@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { boot as bootLang, t } from "./i18n";
+import { boot as bootLang, load as loadLang, t } from "./i18n";
 import { reason } from "./i18n/kernel";
 import { track as trackWidth } from "./ui/viewport";
 import "./styles/tokens.css";
@@ -140,8 +140,10 @@ addEventListener("blur", focus);
 focus();
 
 // Before the first paint: a language that arrives after one would show the
-// interface in one language and then swap it.
-bootLang();
+// interface in one language and then swap it. An English window fetches its
+// catalogue here; a Chinese one — the key is the text — fetches nothing.
+const fixedLang = bootLang();
+const catalogue = loadLang(fixedLang);
 trackWidth();
 
 // The boot screen is markup in index.html, so it is on screen before this
@@ -171,8 +173,8 @@ function arrive(shown: Promise<unknown>) {
 }
 
 const root = createRoot(document.getElementById("root")!);
-pick().then(
-  (hub) => {
+Promise.all([pick(), catalogue]).then(
+  ([hub]) => {
     // Before the first render, and not from whichever view happens to want a
     // drop: a window with no drop target mounted still has to refuse a file, or
     // the webview navigates to it and the app is replaced by what was dropped.

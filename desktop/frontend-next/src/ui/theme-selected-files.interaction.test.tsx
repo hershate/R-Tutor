@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ThemeImport } from "./ThemeImport";
 import { SseTheme } from "../port/sse_theme";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort } from "../port/port";
 
 afterEach(() => {
@@ -16,7 +16,7 @@ afterEach(() => {
 
 it.each(["zh", "en"])("refuses mixed selection and lets the user retry one ZIP with canonical feedback (%s)", async (lang) => {
   localStorage.setItem(STORAGE, lang);
-  boot();
+  await load(boot());
   const raw = new TextEncoder().encode("archive fixture");
   const zip = new File([raw], "dusk.zip");
   const read = vi.fn().mockResolvedValue(raw.buffer);

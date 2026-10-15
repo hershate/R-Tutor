@@ -5,7 +5,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Item } from "../state/session";
 import type { Checkpoint } from "../port/port";
-import { boot, current, STORAGE, t } from "../i18n";
+import { boot, load, current, STORAGE, t } from "../i18n";
 import { UserCard } from "./cards/UserCard";
 
 afterEach(cleanup);
@@ -42,7 +42,7 @@ describe("the controls below a message", () => {
     const previous = localStorage.getItem(STORAGE);
     const previousLang = current();
     localStorage.setItem(STORAGE, lang);
-    boot();
+    await load(boot());
     const user = userEvent.setup();
     const write = vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(new Error("denied"));
     try {
@@ -55,7 +55,7 @@ describe("the controls below a message", () => {
     } finally {
       write.mockRestore();
       localStorage.setItem(STORAGE, previousLang);
-      boot();
+      await load(boot());
       if (previous === null) localStorage.removeItem(STORAGE);
       else localStorage.setItem(STORAGE, previous);
     }

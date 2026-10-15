@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { AddPlugin } from "./AddPlugin";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort, PluginPlan } from "../port/port";
 
 afterEach(() => {
@@ -26,7 +26,7 @@ it.each(["zh", "en"].flatMap((lang) => [false, true].map((reload) => ({ lang, re
   "keeps the failed action and recovery alongside the reload result ($lang, reload=$reload)",
   async ({ lang, reload }) => {
     localStorage.setItem(STORAGE, lang);
-    boot();
+    await load(boot());
     const port = new MockPort() as unknown as AgentPort;
     const planned: PluginPlan = {
       ok: true, status: "planned", applied: false, source, planId: "approved-demo",

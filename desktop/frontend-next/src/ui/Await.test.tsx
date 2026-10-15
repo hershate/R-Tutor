@@ -4,7 +4,7 @@ import { act, cleanup, render } from "@testing-library/react";
 import "./testkit";
 import { Await } from "./Await";
 import { PaneShown } from "./shown";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import { retryPhase } from "../state/retry_line";
 import type { Waiting } from "../state/session";
 
@@ -108,9 +108,9 @@ describe("the retry line", () => {
     );
   });
 
-  it("restarts the clock when the next attempt's notice arrives", () => {
+  it("restarts the clock when the next attempt's notice arrives", async () => {
     localStorage.setItem(STORAGE, "en");
-    boot();
+    await load(boot());
     const first = retry({ cause: "timeout", timeoutSecs: 300, delayMs: 500 });
     const { container, rerender } = render(<Await since={NOW} retry={first} />);
     act(() => {

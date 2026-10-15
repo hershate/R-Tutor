@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { ServerRow } from "./ServerRow";
 import { MockPort } from "../port/mock";
-import { boot } from "../i18n";
+import { boot, load, } from "../i18n";
 import type { AgentPort, McpEntry } from "../port/port";
 
 beforeEach(() => { localStorage.setItem("rx-lang", "zh"); boot(); });
@@ -138,7 +138,7 @@ it("preserves removal confirmation and annotation truth when all tools are filte
 });
 
 it("labels search and its empty result in English", async () => {
-  localStorage.setItem("rx-lang", "en"); boot();
+  localStorage.setItem("rx-lang", "en"); await load(boot());
   render(<ServerRow m={server} port={port()} root="/w" live onDone={() => {}} />);
   await open();
   await userEvent.type(row().getByRole("searchbox", { name: "Search tools in docs" }), "missing");

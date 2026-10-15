@@ -1,11 +1,7 @@
-import { EN } from "./en";
-
 // The interface's language. It is not the language the model answers in —
 // that follows what you wrote, per message, and is decided in the kernel.
 // Conflating the two would mean picking English here silenced Chinese replies.
 export type Lang = "zh" | "en";
-
-const DICTS: Record<Lang, Record<string, string>> = { zh: {}, en: EN };
 
 // Chinese source text is the key. Inventing names for 3800 fragments would cost
 // more than it returns, and this way the call site still reads as the sentence
@@ -13,7 +9,11 @@ const DICTS: Record<Lang, Record<string, string>> = { zh: {}, en: EN };
 // than to a blank or a key. The catalogue's completeness is a test's job, the
 // same way internal/base/i18n does it for the CLI.
 let lang: Lang = "zh";
-let dict = DICTS.zh;
+let dict: Record<string, string> = {};
+// The catalogue of the one language that needs one, kept after its first fetch
+// so a later boot() can put it back without another round trip. A real window
+// boots once; a test suite reboots per case, and the setup file preloads this.
+let catalogue: Record<string, string> | null = null;
 
 export const STORAGE = "rx-lang";
 
@@ -26,9 +26,41 @@ export const STORAGE = "rx-lang";
  *  it will be asked about once in its life. */
 export function boot(): Lang {
   lang = resolve(localStorage.getItem(STORAGE));
-  dict = DICTS[lang];
+  // Identity until load() fills in the session's catalogue: a switch back to
+  // Chinese must not keep drawing the English that came before it.
+  dict = lang === "en" && catalogue ? catalogue : {};
   document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
   return lang;
+}
+
+/** load brings in the catalogue a window that draws English needs. The
+ *  catalogue is most of the i18n chunk, and a Chinese window — the default —
+ *  never opens it; an English window fetches it beside the kernel probe,
+ *  before the first render, so nothing draws in one language and swaps.
+ *  Chinese is the key itself and needs no fetch. Switching language reloads
+ *  the window (see adopt), so there is no live switch this could miss. */
+export function load(fixed: Lang): Promise<void> {
+  if (fixed !== "en") return Promise.resolve();
+  if (catalogue) {
+    dict = catalogue;
+    return Promise.resolve();
+  }
+  return import("./en").then((module) => {
+    catalogue = module.EN;
+    dict = catalogue;
+  });
+}
+
+/** preload fetches the English catalogue without changing what draws now.
+ *  For the test setup, which cannot await inside the synchronous boot(): the
+ *  catalogue lands in the memo, and the next boot() that resolves English
+ *  adopts it with no round trip — while a file that never boots keeps drawing
+ *  the identity it started with. */
+export function preload(): Promise<void> {
+  if (catalogue) return Promise.resolve();
+  return import("./en").then((module) => {
+    catalogue = module.EN;
+  });
 }
 
 /** resolve turns a stored or configured value — including "auto" and null —

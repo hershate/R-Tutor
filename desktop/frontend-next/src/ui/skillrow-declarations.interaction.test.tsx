@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "./testkit";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import type { AgentPort, SkillEntry } from "../port/port";
 import { SkillRow } from "./SkillRow";
 
@@ -124,7 +124,7 @@ it("reads refreshed declarations from the selected project and connection", asyn
 
 it("labels declarations in English while keeping author values literal", async () => {
   localStorage.setItem(STORAGE, "en");
-  boot();
+  await load(boot());
   draw();
   const summary = screen.getByText("Subagent declarations");
   expect(summary.getAttribute("aria-label")).toBe("Subagent declarations for review");

@@ -5,7 +5,7 @@ import "./testkit";
 import { Pane } from "./Pane";
 import { ChangedFilesSetting } from "./ChangedFilesSetting";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import type { AgentPort } from "../port/port";
 import type { RuntimeView } from "../port/hub";
 import type { WireEvent } from "../port/wire";
@@ -94,7 +94,7 @@ describe("the changed-files pill above the input box", () => {
 
   it("uses the English singular and plural", async () => {
     localStorage.setItem(STORAGE, "en");
-    boot();
+    await load(boot());
     await open([change("a.go", 2, 1)]);
     await waitFor(() => expect(pill()).toBeTruthy());
     expect(pill()!.textContent).toBe("1 file changed+2−1");

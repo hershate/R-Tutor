@@ -6,7 +6,7 @@ import "./testkit";
 import { Settings } from "./Settings";
 import { MockPort } from "../port/mock";
 import { MockHub } from "../port/mock_hub";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort, PluginPlan, SessionStatus } from "../port/port";
 
 afterEach(() => {
@@ -50,7 +50,7 @@ function deferReload(port: AgentPort) {
 
 it.each(["zh", "en"])("retains an applied removal's reload warning after its row disappears (%s)", async (lang) => {
   localStorage.setItem(STORAGE, lang);
-  boot();
+  await load(boot());
   const port = new MockPort() as unknown as AgentPort;
   const original = port.removePlugin.bind(port);
   vi.spyOn(port, "removePlugin").mockImplementation(async (name) => ({ ...await original(name), reloadError: refusal }));
@@ -120,7 +120,7 @@ it.each(["success", "denied"])("does not report a reload warning for a removal w
 
 it.each(["zh", "en"])("replaces a previous reload warning when removal applies successfully (%s)", async (lang) => {
   localStorage.setItem(STORAGE, lang);
-  boot();
+  await load(boot());
   const port = new MockPort() as unknown as AgentPort;
   const toggle = port.setPluginEnabled.bind(port);
   vi.spyOn(port, "setPluginEnabled").mockImplementation(async (name, enabled) => ({

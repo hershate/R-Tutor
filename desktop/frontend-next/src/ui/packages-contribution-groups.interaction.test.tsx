@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { Packages } from "./Packages";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import type { AgentPort, PluginPackage } from "../port/port";
 
 afterEach(() => { cleanup(); localStorage.setItem(STORAGE, "zh"); boot(); });
@@ -20,7 +20,7 @@ const categories = [
 
 async function fixture(lang: "zh" | "en") {
   localStorage.setItem(STORAGE, lang);
-  boot();
+  await load(boot());
   const port = new MockPort() as unknown as AgentPort;
   const [pkg] = await port.plugins();
   const mixed: PluginPackage = { ...pkg, skills: [], commands: [], agents: [], prompts: [], themes: [] };

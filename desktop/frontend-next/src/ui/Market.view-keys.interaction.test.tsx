@@ -6,7 +6,7 @@ import "./testkit";
 import { MarketGroup } from "./Market";
 import { MockPort } from "../port/mock";
 import type { AgentPort, MarketPlan } from "../port/port";
-import { boot, t } from "../i18n";
+import { boot, load, t } from "../i18n";
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.setItem("rx-lang", "zh"); boot(); });
 
@@ -18,7 +18,7 @@ const nameInput = () => screen.getByRole("textbox", { name: new RegExp("^" + t("
 
 describe("market author navigation keys", () => {
   it.each(["zh", "en"])("keeps one navigation Tab stop and enters the selected view in %s", async (language) => {
-    localStorage.setItem("rx-lang", language); boot();
+    localStorage.setItem("rx-lang", language); await load(boot());
     render(<MarketGroup port={port()} account={account} onInstalled={() => {}} onSignIn={() => {}} />);
     expect(views().getAllByRole<HTMLButtonElement>("radio").filter((button) => button.tabIndex === 0)).toEqual([radio("浏览")]);
     radio("浏览").focus();

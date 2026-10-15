@@ -6,7 +6,7 @@ import "./testkit";
 import { AddPlugin, Candidate } from "./AddPlugin";
 import { PlanConfirm } from "./MarketConfirm";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import type { AgentPort, PluginAction, PluginPlan } from "../port/port";
 
 const clipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
@@ -32,7 +32,7 @@ it.each([
   ["zh", false], ["en", false], ["zh", true], ["en", true],
 ])("copies the resolved commit in a %s preview (updating=%s) without changing confirmation", async (lang, updating) => {
   localStorage.setItem(STORAGE, lang);
-  boot();
+  await load(boot());
   const user = userEvent.setup();
   const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
   const port = new MockPort() as unknown as AgentPort;
@@ -60,7 +60,7 @@ it.each([
   ["zh", false], ["en", false], ["zh", true], ["en", true],
 ])("copies the same producer value in the %s market confirmation (own=%s)", async (lang, own) => {
   localStorage.setItem(STORAGE, lang);
-  boot();
+  await load(boot());
   const user = userEvent.setup();
   const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
   const onInstall = vi.fn();

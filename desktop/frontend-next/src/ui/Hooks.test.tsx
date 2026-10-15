@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import type { AgentPort, HookCatalog } from "../port/port";
 import { Hooks } from "./Hooks";
 
@@ -42,7 +42,7 @@ it("covers every event declared by the kernel", () => {
 for (const lang of ["zh", "en"] as const) {
   it(`renders ${lang} labels while saving canonical event ids`, async () => {
     localStorage.setItem(STORAGE, lang);
-    boot();
+    await load(boot());
     const catalog: HookCatalog = {
       globalPath: "/fixture/settings.json", projectPath: "", sources: [],
       events: [...events, "FutureEvent"].map((name) => ({ name, blocking: name === "PreToolUse", usesMatch: false })),

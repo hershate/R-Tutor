@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { AddPlugin } from "./AddPlugin";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort } from "../port/port";
 
 afterEach(() => {
@@ -25,7 +25,7 @@ it.each(["zh", "en"].flatMap((lang) => [false, true].flatMap((updating) =>
   reasons.map((reloadError) => ({ lang, updating, reloadError })),
 )))("preserves the host reload reason after an applied install ($lang, updating=$updating, $reloadError)", async ({ lang, updating, reloadError }) => {
   localStorage.setItem(STORAGE, lang);
-  boot();
+  await load(boot());
   const port = new MockPort() as unknown as AgentPort;
   const current = (await port.plugins())[0]!;
   const source = current.source!;

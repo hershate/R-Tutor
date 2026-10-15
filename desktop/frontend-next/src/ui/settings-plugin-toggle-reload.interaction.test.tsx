@@ -7,7 +7,7 @@ import { Settings } from "./Settings";
 import { MockPort } from "../port/mock";
 import { MockHub } from "../port/mock_hub";
 import { SsePort } from "../port/sse";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort, PluginPackage, SessionStatus } from "../port/port";
 
 afterEach(() => {
@@ -59,7 +59,7 @@ function fixture(enabled: boolean, reloadError?: string, denied = false) {
 it.each([true, false].flatMap((enabled) => ["zh", "en"].map((lang) => ({ enabled, lang }))))(
   "keeps the saved toggle and offers a reload retry (enabled=$enabled, $lang)", async ({ enabled, lang }) => {
     localStorage.setItem(STORAGE, lang);
-    boot();
+    await load(boot());
     const { port, calls } = fixture(enabled, refusal);
     const changed = vi.fn();
     render(draw(port, changed));

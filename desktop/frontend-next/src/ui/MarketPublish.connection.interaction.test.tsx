@@ -5,14 +5,14 @@ import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { MyPackages } from "./MarketPublish";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort, MarketPackage, MarketPlan } from "../port/port";
 
 afterEach(() => { cleanup(); localStorage.setItem(STORAGE, "zh"); boot(); });
 
 describe("my packages connection lifetime", () => {
   it.each(["zh", "en"])("announces review failures on their own row and clears them for retry and host changes (%s)", async (lang) => {
-    localStorage.setItem(STORAGE, lang); boot();
+    localStorage.setItem(STORAGE, lang); await load(boot());
     const port = new MockPort() as unknown as AgentPort;
     const next = new MockPort() as unknown as AgentPort;
     const first = { ...(await port.myMarket()).find((p) => p.slug === "demo/ship-notes")!, status: "private" };

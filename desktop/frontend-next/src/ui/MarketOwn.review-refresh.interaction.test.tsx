@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "./testkit";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import { MockPort } from "../port/mock";
 import type { AgentPort, MarketPackage } from "../port/port";
 import { MyPackages } from "./MarketPublish";
@@ -14,7 +14,7 @@ it.each(["zh", "en"].flatMap((lang) => ["success", "failure"].map((outcome) => (
   "keeps the review result after an earlier install refresh $outcome ($lang)",
   async ({ lang, outcome }) => {
     localStorage.setItem(STORAGE, lang);
-    boot();
+    await load(boot());
     const port = new MockPort() as unknown as AgentPort;
     const published = await port.publishMarket({
       kind: "theme", name: "review-refresh-demo", visibility: "private",

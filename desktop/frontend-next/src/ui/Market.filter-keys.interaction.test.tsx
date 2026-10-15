@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { Market } from "./Market";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort } from "../port/port";
 
 afterEach(() => {
@@ -20,7 +20,7 @@ const radio = (groupName: string, name: string) => group(groupName).getByRole<HT
 
 async function draw(lang = "zh") {
   localStorage.setItem(STORAGE, lang);
-  boot();
+  await load(boot());
   const port = new MockPort() as unknown as AgentPort;
   const read = vi.spyOn(port, "marketList");
   render(<Market port={port} onInstalled={() => {}} />);

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { boot, STORAGE, t } from "./index";
+import { boot, load, STORAGE, t } from "./index";
 import { NOTICE_TEXT } from "./notices";
 import { say } from "./kernel";
 import { workspaceLeaseDetail } from "./workspace_lease";
@@ -9,9 +9,9 @@ afterEach(() => { localStorage.setItem(STORAGE, "zh"); boot(); });
 
 describe("write claim attribution", () => {
   for (const language of ["zh", "en"]) {
-    it(`carries holder identity and extent in ${language}`, () => {
+    it(`carries holder identity and extent in ${language}`, async () => {
       localStorage.setItem(STORAGE, language);
-      boot();
+      await load(boot());
       const claim = { contended: 0, heldMs: 0, idleMs: 0, holder: "Fixture A", holderSessionId: "session-a", paths: ["src/a.go"], requestedPaths: ["src/b.go"] };
       const detail = workspaceLeaseDetail(claim);
       for (const value of ["Fixture A", "session-a", "src/a.go", "src/b.go"]) expect(detail).toContain(value);

@@ -8,7 +8,7 @@ import { FeedbackMine } from "./FeedbackMine";
 import { MockPort } from "../port/mock";
 import { HttpError, type AgentPort } from "../port/port";
 import { FEEDBACK_CODE, type FeedbackItem, type FeedbackMine as Mine, type FeedbackProfile } from "../port/feedback";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 
 afterEach(() => {
   cleanup();
@@ -99,7 +99,7 @@ describe("the level row", () => {
 
   it("speaks English when the interface does", async () => {
     localStorage.setItem(STORAGE, "en");
-    boot();
+    await load(boot());
     await shown(MID);
     expect(text(".fbk-level-name")).toBe("L2 · Seedling");
     expect(text(".fbk-level-progress")).toBe("4 shipped, 2 more to reach Sapling");

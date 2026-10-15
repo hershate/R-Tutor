@@ -7,7 +7,7 @@ import { Settings } from "./Settings";
 import { MockPort } from "../port/mock";
 import { MockHub } from "../port/mock_hub";
 import type { AgentPort, ModelEntry, SessionStatus } from "../port/port";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 
 afterEach(() => {
   cleanup();
@@ -60,7 +60,7 @@ const refs = (select: HTMLSelectElement) => Array.from(select.options, (option) 
 
 it.each(["zh", "en"])("refreshes a newly installed provider into the still-open model picker (%s)", async (language) => {
   localStorage.setItem(STORAGE, language);
-  boot();
+  await load(boot());
   const { port, publish } = await fixture(false);
   const install = port.installPlugin.bind(port);
   vi.spyOn(port, "installPlugin").mockImplementation(async (req) => {

@@ -6,7 +6,7 @@ import "./testkit";
 import { Appearance } from "./Appearance";
 import { MockPort } from "../port/mock";
 import { SseTheme } from "../port/sse_theme";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import type { AgentPort, ThemePack } from "../port/port";
 
 const dusk: ThemePack = {
@@ -87,7 +87,7 @@ it("keeps a working preview mounted across ordinary palette redraws", async () =
 
 it.each(["zh", "en"])("keeps foundations visible and previews their own scheme in %s", async (lang) => {
   localStorage.setItem(STORAGE, lang);
-  boot();
+  await load(boot());
   const port = new MockPort();
   const view = render(picker(port));
   const blue = await screen.findByRole("button", { name: lang === "zh" ? /清白蓝/ : /Clear Blue/ });

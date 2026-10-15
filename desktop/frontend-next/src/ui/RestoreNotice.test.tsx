@@ -3,15 +3,15 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { parse } from "@babel/parser";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import { ReloadNotice, RestoreNotice } from "./RestoreNotice";
 import { walkStack, type Node } from "./roots";
 import css from "./RestoreNotice.css?raw";
 import pane from "./Pane.tsx?raw";
 
 afterEach(() => { cleanup(); localStorage.setItem(STORAGE, "zh"); boot(); });
-it.each(["zh", "en"])("renders named undo and dismiss buttons in %s", (language) => {
-  localStorage.setItem(STORAGE, language); boot();
+it.each(["zh", "en"])("renders named undo and dismiss buttons in %s", async (language) => {
+  localStorage.setItem(STORAGE, language); await load(boot());
   render(<RestoreNotice receipt={{ tx: "tx-1", files: 1, working: false, error: "" }} onUndo={vi.fn(async () => {})} onDismiss={vi.fn()} />);
   expect(screen.getByRole("button", { name: language === "zh" ? "撤销这次还原" : "Undo this restore" })).toBeTruthy();
   expect(screen.getAllByRole("button").every((b) => !!b.textContent?.trim())).toBe(true);

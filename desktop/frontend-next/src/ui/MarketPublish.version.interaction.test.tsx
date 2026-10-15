@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "./testkit";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import { MarketGroup } from "./Market";
 import { MockPort } from "../port/mock";
 import type { AgentPort, MarketKind, MarketPackage, MarketPublished } from "../port/port";
@@ -52,7 +52,7 @@ const nameHint = {
 
 it.each(["zh", "en"].flatMap((lang) => ["1.4.9-rc.1", "release-2026"].map((latest) => ({ lang, latest }))))(
   "explains blank-version limits and preserves a corrected $latest update in $lang", async ({ lang, latest }) => {
-    localStorage.setItem(STORAGE, lang); boot();
+    localStorage.setItem(STORAGE, lang); await load(boot());
     const f = await fixture("plugin", "active", latest);
     f.publish.mockRejectedValueOnce(new Error("That version is already published"));
     await openDraft(f.row);
@@ -76,7 +76,7 @@ it.each(["zh", "en"].flatMap((lang) => ["1.4.9-rc.1", "release-2026"].map((lates
 );
 
 it.each(["zh", "en"] as const)("explains the name choice and submits the author's edited name in %s", async (lang) => {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const f = await fixture();
   await openDraft(f.row);
   const name = field("名称");
@@ -94,7 +94,7 @@ it.each([
   ["skill", "private", "zh"], ["plugin", "pending", "zh"], ["mcp", "rejected", "zh"], ["theme", "active", "zh"],
   ["skill", "private", "en"], ["plugin", "pending", "en"], ["mcp", "rejected", "en"], ["theme", "active", "en"],
 ] as const)("opens an editable %s/%s release draft in %s without publishing or installing", async (kind, status, lang) => {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const f = await fixture(kind, status);
   const action = within(f.row).getByRole("button", { name: t("发布新版本") });
   action.focus();
@@ -229,7 +229,7 @@ it.each(["success", "failure"])("reads the replacement account's release list wh
 });
 
 it.each(["zh", "en"])("keeps prefilled comma-containing tags when adding a tag in %s", async (lang) => {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const f = await fixture();
   await openDraft(f.row);
   fillSource();
@@ -239,7 +239,7 @@ it.each(["zh", "en"])("keeps prefilled comma-containing tags when adding a tag i
 });
 
 it.each(["zh", "en"])("edits an existing tag as one item and retains it through a failed submission in %s", async (lang) => {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const f = await fixture();
   f.publish.mockRejectedValueOnce(new Error("registry unavailable"));
   await openDraft(f.row);

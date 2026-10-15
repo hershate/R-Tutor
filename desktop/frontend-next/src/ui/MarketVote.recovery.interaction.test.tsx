@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "./testkit";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import { reason } from "../i18n/kernel";
 import { Market } from "./Market";
 import { MockPort } from "../port/mock";
@@ -39,7 +39,7 @@ async function fixture(failure: Error = new Error("registry unavailable")) {
 }
 
 it.each(["zh", "en"])("keeps a failed vote lookup unknown and retryable in %s", async (lang) => {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const f = await fixture();
   expect(screen.queryByRole("button", { name: t("登录后评价") })).toBeNull();
   expect(screen.getByRole("alert").textContent).toBe("registry unavailable");
@@ -146,7 +146,7 @@ it("keeps a known vote and allows another cast after its write fails", async () 
 });
 
 it.each(["zh", "en"])("offers sign-in after a typed signed-out vote write in %s", async (lang) => {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const f = await fixture();
   f.read.mockResolvedValueOnce(known);
   await userEvent.click(screen.getByRole("button", { name: t("重试") }));

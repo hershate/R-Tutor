@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { MyPackages } from "./MarketPublish";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort } from "../port/port";
 
 afterEach(() => {
@@ -26,7 +26,7 @@ it.each(["zh", "en"].flatMap((lang) => ["success", "failure"].map((outcome) => (
   "keeps review submission owned by one row through a $lang $outcome",
   async ({ lang, outcome }) => {
     localStorage.setItem(STORAGE, lang);
-    boot();
+    await load(boot());
     const port = new MockPort() as unknown as AgentPort;
     const packages = await Promise.all(["first-draft", "second-draft"].map((name) => port.publishMarket({
       kind: "theme", name, source: "https://github.com/demo/themes", visibility: "private",

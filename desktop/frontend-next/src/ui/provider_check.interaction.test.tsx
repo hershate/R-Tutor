@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import "./testkit";
 import type { ProviderCheck, ProviderEntry } from "../port/port";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import { EditConn } from "./EditConn";
 import { Providers, type Port } from "./Providers";
 import { checkFailure } from "./provider_check";
@@ -83,7 +83,7 @@ it("keeps the passing result as it was", async () => {
 
 it("renders the same failure in English", async () => {
   localStorage.setItem(STORAGE, "en");
-  boot();
+  await load(boot());
   drawDetail(async () => refused);
   await userEvent.click(await screen.findByRole("button", { name: "Test it" }));
   expect((await screen.findByText(/That key was refused/)).textContent).toContain("HTTP 401");
@@ -116,7 +116,7 @@ it("never leaves the cause empty when the kernel sends no code or one this windo
   expect(checkFailure({ ok: false })).toBe("检查失败，没有具体原因");
   expect(checkFailure({ ok: false, code: "provider.future_code", httpStatus: 418 })).toBe("检查失败，没有具体原因 · HTTP 418");
   localStorage.setItem(STORAGE, "en");
-  boot();
+  await load(boot());
   expect(checkFailure({ ok: false })).toBe("The check failed and gave no reason");
   expect(checkFailure({ ok: false, code: "provider.probe.failed" })).toBe("The check failed and gave no reason");
 });

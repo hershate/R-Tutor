@@ -6,7 +6,7 @@ import "./testkit";
 import { Packages } from "./Packages";
 import { MockPort } from "../port/mock";
 import type { AgentPort, PluginExport, PluginPackage } from "../port/port";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 
 afterEach(() => {
   cleanup();
@@ -21,7 +21,7 @@ function draw(port: AgentPort, packages: PluginPackage[], onChanged: () => void)
 
 async function setup(lang = "zh") {
   localStorage.setItem(STORAGE, lang);
-  boot();
+  await load(boot());
   const user = userEvent.setup();
   const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
   const port = new MockPort() as unknown as AgentPort;

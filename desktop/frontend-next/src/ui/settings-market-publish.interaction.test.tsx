@@ -8,7 +8,7 @@ import { Settings } from "./Settings";
 import { MarketGroup } from "./Market";
 import { MockPort } from "../port/mock";
 import { MockHub } from "../port/mock_hub";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort, MarketPlan, MarketPublished, SessionStatus } from "../port/port";
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.setItem(STORAGE, "zh"); boot(); });
@@ -56,7 +56,7 @@ it("keeps a pending publish receipt visible after clicking the browse view", asy
 it.each(["zh", "en"].flatMap((lang) => [false, true].flatMap((privateDraft) =>
   ["success", "failure"].map((outcome) => ({ lang, privateDraft, outcome })),
 )))("holds the $lang author form and Settings navigation through private=$privateDraft publish $outcome", async ({ lang, privateDraft, outcome }) => {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const port = new MockPort() as unknown as AgentPort;
   const out = await receipt(port, privateDraft);
   const pending = deferred<MarketPublished>();

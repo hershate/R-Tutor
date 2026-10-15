@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { MockPort } from "../port/mock";
 import { WorkbenchPanel } from "./WorkbenchPanel";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 
 const props = (port = new MockPort(), workspaceRoot = "/work/project") => ({
   port, workspaceRoot, tabs: [], manual: false, shown: true, scheme: "light" as const,
@@ -160,7 +160,7 @@ it("leaves selected text to the browser's context menu", async () => {
 
 it("labels copy actions in English", async () => {
   localStorage.setItem(STORAGE, "en");
-  boot();
+  await load(boot());
   try {
     render(<WorkbenchPanel {...props()} />);
     fireEvent.contextMenu(await screen.findByRole("button", { name: "README.md" }));

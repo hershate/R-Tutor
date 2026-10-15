@@ -5,12 +5,12 @@ import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { AddPlugin } from "./AddPlugin";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import type { AgentPort } from "../port/port";
 
-beforeEach(() => {
+beforeEach(async () => {
   localStorage.setItem(STORAGE, "en");
-  boot();
+  await load(boot());
 });
 afterEach(() => {
   cleanup();
@@ -100,7 +100,7 @@ describe("localized installation previews", () => {
 
   it.each(["zh", "en"])("localizes only newly added runtime tools in the %s update summary", async (lang) => {
     localStorage.setItem(STORAGE, lang);
-    boot();
+    await load(boot());
     const port = new MockPort() as unknown as AgentPort;
     const current = (await port.plugins())[0]!;
     const plan = await port.planPlugin({ source: current.source! });

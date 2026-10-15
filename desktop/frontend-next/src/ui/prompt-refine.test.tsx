@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { Composer } from "./Composer";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import { HttpError, type AgentPort, type ApprovalMode, type Preset, type SessionStatus } from "../port/port";
 
 afterEach(cleanup);
@@ -108,11 +108,11 @@ describe("the refine button's tooltip", () => {
   it.each([
     ["zh", "用当前模型改写得更清楚，采用前不会替换原文"],
     ["en", "Rewrite it more clearly with the current model; your text stays until you adopt it"],
-  ])("keeps the separator with the shortcut in %s without losing the description", (language, description) => {
+  ])("keeps the separator with the shortcut in %s without losing the description", async (language, description) => {
     const saved = localStorage.getItem(STORAGE);
     try {
       localStorage.setItem(STORAGE, language);
-      boot();
+      await load(boot());
       const { refine, getByText } = draw(async () => "x");
       const tip = refine.querySelector('[role="tooltip"]') as HTMLElement;
       const shortcut = getByText("· Ctrl+Shift+E", { exact: true });
@@ -123,7 +123,7 @@ describe("the refine button's tooltip", () => {
     } finally {
       if (saved === null) localStorage.removeItem(STORAGE);
       else localStorage.setItem(STORAGE, saved);
-      boot();
+      await load(boot());
     }
   });
 

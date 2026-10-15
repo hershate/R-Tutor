@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { Market } from "./Market";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort, MarketCache, MarketPackage } from "../port/port";
 
 afterEach(() => { cleanup(); localStorage.setItem(STORAGE, "zh"); boot(); });
@@ -26,7 +26,7 @@ function fixture() {
 }
 
 it.each(["zh", "en"])("labels a listing served from the last good copy and leaves a live one unlabelled (%s)", async (lang) => {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const port = fixture();
   (port.marketList as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ packages: [pkg], limit: 24, offset: 0, cache });
   render(<Market port={port} onInstalled={() => {}} />);

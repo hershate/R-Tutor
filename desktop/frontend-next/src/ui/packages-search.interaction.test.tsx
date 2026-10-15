@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { Packages } from "./Packages";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort, PluginExport, PluginPackage } from "../port/port";
 
 afterEach(() => {
@@ -17,7 +17,7 @@ afterEach(() => {
 
 async function draw(lang = "zh") {
   localStorage.setItem(STORAGE, lang);
-  boot();
+  await load(boot());
   const port = new MockPort() as unknown as AgentPort;
   const packages = await port.plugins();
   const props = { port, packages, onChanged: vi.fn(), updating: "", onUpdate: vi.fn() };

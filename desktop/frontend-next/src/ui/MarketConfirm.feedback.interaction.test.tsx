@@ -6,7 +6,7 @@ import "./testkit";
 import { Market } from "./Market";
 import { OwnInstall } from "./MarketOwn";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort, MarketPlan } from "../port/port";
 
 afterEach(() => { cleanup(); localStorage.setItem(STORAGE, "zh"); boot(); });
@@ -50,7 +50,7 @@ async function fixture(flow: string) {
 }
 
 it.each(cases)("exposes the confirmation's pending lifetime ($lang, $flow)", async ({ lang, flow }) => {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const f = await fixture(flow);
   expect(f.panel.getAttribute("aria-busy")).toBe("false");
   await userEvent.click(f.consent);
@@ -66,7 +66,7 @@ it.each(cases)("exposes the confirmation's pending lifetime ($lang, $flow)", asy
 });
 
 it.each(cases)("locks the acknowledged skill set during a deferred installation ($lang, $flow)", async ({ lang, flow }) => {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const f = await fixture(flow);
   expect(f.consent.disabled).toBe(false);
   expect(screen.getByRole<HTMLButtonElement>("button", { name: t("安装") }).disabled).toBe(true);
@@ -82,7 +82,7 @@ it.each(cases)("locks the acknowledged skill set during a deferred installation 
 });
 
 it.each(cases)("announces a thrown install failure and clears it for retry ($lang, $flow)", async ({ lang, flow }) => {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const f = await fixture(flow);
   await userEvent.click(f.consent);
   await userEvent.click(screen.getByRole("button", { name: t("安装") }));

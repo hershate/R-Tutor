@@ -6,7 +6,7 @@ import "./testkit";
 import { Packages } from "./Packages";
 import { MockPort } from "../port/mock";
 import type { AgentPort, PluginExport } from "../port/port";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 
 afterEach(() => {
   cleanup();
@@ -19,7 +19,7 @@ const previous: PluginExport = { savedTo: "/tmp/previous-export.zip", required: 
 
 async function setup(lang = "zh") {
   localStorage.setItem(STORAGE, lang);
-  boot();
+  await load(boot());
   const port = new MockPort() as unknown as AgentPort;
   const packages = (await port.plugins()).filter((p) => p.name === "review-kit");
   const onChanged = vi.fn();

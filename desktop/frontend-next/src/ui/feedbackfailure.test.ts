@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../port/http_error";
 import { FEEDBACK_CODE } from "../port/feedback";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import { feedbackFailure, replyFailure } from "./feedbackfailure";
 
 const refuse = (code: string, params?: Record<string, string | number>) =>
@@ -143,9 +143,9 @@ describe("a refusal that names its window", () => {
     expect(reply(FEEDBACK_CODE.replyLimit, {}).message).toMatch(/回复得太频繁/);
   });
 
-  it("speaks English with the same structure", () => {
+  it("speaks English with the same structure", async () => {
     localStorage.setItem(STORAGE, "en");
-    boot();
+    await load(boot());
     try {
       const en = (iso: string) => new Date(iso).toLocaleString("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
       expect(submit(FEEDBACK_CODE.rateLimited, { limit: "install_daily", resetsAt: RESET }).message).toBe(`You have used today's feedback allowance. It resets at ${en(RESET)}.`);

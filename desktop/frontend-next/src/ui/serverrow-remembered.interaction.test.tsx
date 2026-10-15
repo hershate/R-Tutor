@@ -6,7 +6,7 @@ import "./testkit";
 import { ServerRow } from "./ServerRow";
 import { MockPort } from "../port/mock";
 import type { AgentPort, McpEntry } from "../port/port";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 
 afterEach(() => {
   cleanup();
@@ -39,7 +39,7 @@ describe("a remembered MCP inventory", () => {
     ["en", "disabled", false], ["en", "disabled", true],
   ] as const)("shows %s %s cache provenance (stale=%s) without a server description", async (lang, state, stale) => {
     localStorage.setItem(STORAGE, lang);
-    boot();
+    await load(boot());
     const port = new MockPort() as unknown as AgentPort;
     const reconnect = vi.spyOn(port, "reconnectMcp");
     const view = render(draw({ ...cached, state, stale, enabled: state !== "disabled" }, port));

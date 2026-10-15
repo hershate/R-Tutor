@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { PublishForm } from "./MarketPublish";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import type { AgentPort, MarketPublished, MarketSubmission } from "../port/port";
 
 afterEach(() => {
@@ -36,7 +36,7 @@ it.each(["zh", "en"].flatMap((lang) => ["public", "private"].flatMap((visibility
   ["success", "failure"].map((outcome) => ({ lang, visibility, outcome })),
 )))("keeps the submitted $visibility draft during a $lang $outcome", async ({ lang, visibility, outcome }) => {
   localStorage.setItem(STORAGE, lang);
-  boot();
+  await load(boot());
   const port = new MockPort() as unknown as AgentPort;
   const sent = { ...request, visibility: visibility as "public" | "private" };
   const receipt = await port.publishMarket(sent);

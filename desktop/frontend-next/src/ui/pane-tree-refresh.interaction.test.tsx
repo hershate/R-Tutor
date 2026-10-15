@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import "./testkit";
 import { Pane } from "./Pane";
 import { MockPort } from "../port/mock";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import { reason } from "../i18n/kernel";
 import { HttpError } from "../port/port";
 import type { AgentPort } from "../port/port";
@@ -74,7 +74,7 @@ describe("branch switch refusals in the pane", () => {
     for (const code of ["branch.workspace_busy", "branch.jobs_running", "branch.turn_running"]) {
       it(`shows ${code} in ${language} and lets the reader retry`, async () => {
         localStorage.setItem(STORAGE, language);
-        boot();
+        await load(boot());
         const pane = open();
         const error = new HttpError(409, "fixture fallback", { code, error: "fixture fallback" });
         const refusal = reason(error);

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "./testkit";
-import { boot, STORAGE } from "../i18n";
+import { boot, load, STORAGE } from "../i18n";
 import { RuntimeBar } from "./RuntimeBar";
 import type { RuntimeNotice } from "../state/session";
 
@@ -82,9 +82,9 @@ describe("an extension left out because its sidecar is not running", () => {
     expect(document.querySelector(".rtbar .why")).toBeNull();
   });
 
-  it("says it in English too", () => {
+  it("says it in English too", async () => {
     localStorage.setItem(STORAGE, "en");
-    boot();
+    await load(boot());
     render(<RuntimeBar notices={[skipped()]} onSeen={() => {}} onSettings={() => {}} />);
     expect(document.querySelector(".rtbar .t")?.textContent).toContain("extension aipush-ask-bridge is not running");
     expect(screen.getByRole("button", { name: "Open Tools and integrations" })).toBeTruthy();

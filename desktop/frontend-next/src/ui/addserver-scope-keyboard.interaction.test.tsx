@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "./testkit";
-import { boot, STORAGE, t } from "../i18n";
+import { boot, load, STORAGE, t } from "../i18n";
 import { MockPort } from "../port/mock";
 import type { AgentPort, McpDraft, McpInstallResult } from "../port/port";
 import { AddServer } from "./AddServer";
@@ -14,7 +14,7 @@ const draft: McpDraft = { servers: [{ name: "docs", transport: "http", url: "htt
 const ready: McpInstallResult = { name: "docs", state: "ready", toolCount: 1, action: "installed", message: "" };
 
 async function setup(lang: string, canProject = true) {
-  localStorage.setItem(STORAGE, lang); boot();
+  localStorage.setItem(STORAGE, lang); await load(boot());
   const port = new MockPort() as unknown as AgentPort;
   vi.spyOn(port, "parseMcp").mockResolvedValue(draft);
   const installed = vi.fn();
