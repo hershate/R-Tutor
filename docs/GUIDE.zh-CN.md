@@ -1,3 +1,10 @@
+---
+owner: @SivanCola
+backup: @esengine
+status: active
+reviewed: 2026-10-15
+---
+
 # Reasonix 使用指南
 
 <a href="../README.zh-CN.md">README</a>
@@ -8,6 +15,10 @@
 
 > 日常配置与使用。工程契约与内部实现（数据类型、registry、包结构、路线图）见
 > **[规格 SPEC.md](./SPEC.md)**。
+
+所有窗口式前端——桌面应用 Studio 与 `reasonix web`——都打开在[学习导师](./TUTOR.md)
+首页；Agent 聊天是其中的一页，从导师页头进入。本指南两侧都管：下面各节讲 Agent 侧，
+[学习导师文档](./TUTOR.md)讲学习侧。
 
 ## 目录
 
@@ -248,6 +259,12 @@ reasonix report delete [ID]     # 不发送，直接删除
 cd your-project
 reasonix web
 ```
+
+浏览器 UI 与桌面应用是同一套 SPA：打开即学习导师，Agent 是其中的聊天页。
+
+但它的首跑 provider 向导存不了配置——向导写走的端点只有 Studio 桌面宿主开启，web 服务会以 `provider.editing_disabled` 拒绝。
+
+请改用配置种子：在用户配置里写一条 `[[providers]]` 并设 `default_model`，给服务进程带上密钥的环境变量；首次加载即跳过向导。
 
 如果想启动前台 Web 服务并打印地址、但不自动新开浏览器标签页，可使用
 `reasonix web --no-open`。底层的 `reasonix serve`

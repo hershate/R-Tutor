@@ -1,3 +1,10 @@
+---
+owner: @SivanCola
+backup: @esengine
+status: active
+reviewed: 2026-10-15
+---
+
 # Reasonix Guide
 
 <a href="../README.md">README</a>
@@ -8,6 +15,11 @@
 
 > Day-to-day configuration and usage. For the engineering contract and internals
 > (data types, registries, package layout, roadmap), see the **[Spec](./SPEC.md)**.
+
+Every windowed frontend — the Studio desktop app and `reasonix web` alike — opens
+on the [Study Tutor](./TUTOR.md); the agent chat is a page within it, opened from
+the tutor header. This guide covers both: the sections below describe the agent
+side, the [tutor guide](./TUTOR.md) the study side.
 
 ## Contents
 
@@ -263,6 +275,17 @@ transcript onto disk, so the first Web turn continues the same session identity.
 cd your-project
 reasonix web
 ```
+
+The browser UI is the same SPA the desktop app serves, so it opens on the Study
+Tutor and carries the agent as its chat page.
+
+Its first-run provider wizard cannot save, though: the wizard writes through
+endpoints only the Studio desktop host enables, and a web server answers them
+with `provider.editing_disabled`.
+
+Seed the provider instead — a `[[providers]]` entry plus `default_model` in the
+user config, with the key's environment variable set for the server process —
+and the wizard is skipped on first load.
 
 Use `reasonix web --no-open` when you want to start the foreground Web server
 and print its URL without opening a browser tab. The lower-level
