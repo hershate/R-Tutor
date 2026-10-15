@@ -380,7 +380,8 @@ func (s *Service) WrongQueue(limit int) (map[string]any, error) {
 		items = append(items, map[string]any{
 			"id": p.quiz.ID, "plan_id": p.planID, "node_id": p.quiz.NodeID,
 			"type": string(p.quiz.Type), "question": p.quiz.Payload.Question,
-			"options": p.quiz.Payload.Options, "wrong_at": p.attempt.At,
+			"options": p.quiz.Payload.Options, "answer": p.quiz.Payload.Answer,
+			"wrong_at": p.attempt.At,
 		})
 	}
 	return map[string]any{"items": items, "total": total}, nil

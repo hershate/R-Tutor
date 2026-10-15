@@ -342,6 +342,7 @@ func (s *Server) tutorQuizWrong(w http.ResponseWriter, r *http.Request) {
 		items = append(items, map[string]any{
 			"id": q.ID, "node_id": q.NodeID, "type": string(q.Type),
 			"question": q.Payload.Question, "options": q.Payload.Options,
+			"answer":   q.Payload.Answer,
 			"selected": a.Selected, "wrong_at": a.At,
 		})
 	}

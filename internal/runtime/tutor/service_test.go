@@ -358,6 +358,9 @@ func TestServiceQuizzesAndWrongBook(t *testing.T) {
 	if queue["total"] != 1 {
 		t.Fatalf("wrong queue total = %v", queue["total"])
 	}
+	if items, _ := queue["items"].([]map[string]any); len(items) != 1 || items[0]["answer"] != "setState" {
+		t.Fatalf("wrong queue items must carry the answer for re-learning, got %v", queue["items"])
+	}
 	stats, err := svc.QuizStats(live.PlanID)
 	if err != nil {
 		t.Fatal(err)
