@@ -44,7 +44,12 @@ it("converges two App trees and counts after another client's changes and page r
     };
     return hub;
   });
-  const views = clients.map((hub) => render(<App hub={hub} />));
+  // The address names one surface per launch; two trees in one page are two
+  // clients of the chat surface, so each gets the address afresh.
+  const views = clients.map((hub) => {
+    window.location.hash = "#chat";
+    return render(<App hub={hub} />);
+  });
   const count = (i: number, scope: string) => views[i].container.querySelector(`[data-action="session.filter"][data-value="${scope}"] b`)?.textContent;
   const ids = (i: number) => Array.from(views[i].container.querySelectorAll<HTMLElement>('[data-action-click="session.open"]'), (row) => row.dataset.target).sort();
   const notify = () => listeners.forEach((fn) => fn());

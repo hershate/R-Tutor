@@ -14,7 +14,7 @@ function mounted() {
   const port = new MockPort() as unknown as AgentPort;
   const views: TutorView[] = [{ k: "home" }];
   const tree = (v: TutorView) => (
-    <Tutor port={port} view={v} onGo={go} onClose={() => undefined} onError={() => undefined} />
+    <Tutor port={port} view={v} onGo={go} onChat={() => undefined} onSettings={() => undefined} onError={() => undefined} />
   );
   // Defined after render hands it back; go only runs on a later click.
   let rerender: (v: TutorView) => void = () => undefined;
@@ -157,7 +157,7 @@ it("shows the honest empty state for a session with no pending questions", async
   const port = new MockPort() as unknown as AgentPort;
   const session = await port.tutorCreateSession("目标");
   const utils = render(
-    <Tutor port={port} view={{ k: "clarify", sid: session.id }} onGo={() => undefined} onClose={() => undefined} onError={() => undefined} />,
+    <Tutor port={port} view={{ k: "clarify", sid: session.id }} onGo={() => undefined} onChat={() => undefined} onSettings={() => undefined} onError={() => undefined} />,
   );
   expect(await utils.findByText("这个会话当前没有待回答的问题。")).toBeTruthy();
 });

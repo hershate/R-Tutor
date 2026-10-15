@@ -13,7 +13,7 @@
     "doc-prose": 2139,
     "error-text": 9,
     "essay": 2682,
-    "file-size": 20700,
+    "file-size": 20694,
     "flat-view": 0,
     "frontend-parity": 27,
     "function-size": 2579,
@@ -95,9 +95,6 @@
     "desktop/frontend-next/src/styles/studio.css": {
       "css-important": 179,
       "css-size": 4226
-    },
-    "desktop/frontend-next/src/ui/App.tsx": {
-      "file-size": 6
     },
     "desktop/internal/winuninstall/registry_windows.go": {
       "essay": 1

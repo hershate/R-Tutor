@@ -36,6 +36,10 @@ afterEach(() => {
 });
 
 async function open() {
+  // A reload lands on the tutor surface by design; these tests are about the
+  // chat window, so each remount is launched the way a chat-surface address
+  // would launch it.
+  window.location.hash = "#chat";
   const hub = new MockHub();
   const build = hub.portFor.bind(hub);
   const prepared = new WeakSet();

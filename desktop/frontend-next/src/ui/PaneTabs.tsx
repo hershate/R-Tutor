@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "../i18n";
-import type { RuntimeView } from "../port/hub";
+import type { RuntimeView, TreeWorkspace } from "../port/hub";
 import { arrowTabs } from "./tablist";
 import { pinToViewport } from "./place";
 import { useMarker } from "./marker";
 import { useDismiss } from "./dismiss";
+import { isUnread, type Trees } from "./unread";
 import { UnreadDot } from "./UnreadMark";
 
 export interface TabView {
@@ -13,6 +14,42 @@ export interface TabView {
   run: string;
   live: boolean;
   unread?: boolean;
+}
+
+/** The strip's rows. A pane's label comes from the tree row it opened, so the
+ *  sidebar and the tab never disagree; an unnamed session gets a number rather
+ *  than a third "新会话" — with several open, identical labels are the same as
+ *  no labels. */
+export function usePaneTabs(
+  tree: TreeWorkspace[],
+  runtimes: RuntimeView[],
+  runs: Record<string, { run: string; live: boolean }>,
+  unreadTree: TreeWorkspace[],
+  unreadRemote: Trees,
+): TabView[] {
+  const titleFor = useCallback(
+    (rt: RuntimeView, at: number) => {
+      for (const ws of tree) {
+        for (const session of ws.sessions) {
+          // An unwritten one has only a file name; the numbered fallback reads better.
+          if (session.runtimeId === rt.id && (session.title || session.turns)) return session.title || session.name;
+        }
+      }
+      return at === 0 ? t("新会话") : t("新会话 {n}", { n: at + 1 });
+    },
+    [tree],
+  );
+  return useMemo(
+    () =>
+      runtimes.map((rt, i) => ({
+        rt,
+        title: titleFor(rt, i),
+        run: runs[rt.id]?.run ?? "idle",
+        live: runs[rt.id]?.live ?? false,
+        unread: isUnread(rt, unreadTree, unreadRemote),
+      })),
+    [runtimes, titleFor, runs, unreadTree, unreadRemote],
+  );
 }
 
 interface Props {

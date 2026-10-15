@@ -27,7 +27,8 @@ import { RenameSession } from "./RenameSession";
 import { RemoteAsk } from "./RemoteAsk";
 import { useFeedbackUnread } from "./useFeedbackUnread";
 import { Feedback, type FeedbackTab } from "./Feedback";
-import { TutorSheet, consumeTutorHash } from "./tutor/Tutor";
+import { consumeSurfaceHash, type TutorView } from "./tutor/Tutor";
+import { TutorSurface } from "./TutorSurface";
 import { usePaneForSheets } from "./usePaneForSheets";
 import { BrowserLogin } from "./BrowserLogin";
 import type { RemoteAsk as RemoteAskT, RemoteHost } from "../port/remote";
@@ -40,10 +41,10 @@ import { rememberActivePane, savedActivePane } from "./activepane";
 import { Sidebar } from "./Sidebar";
 import { Sky } from "./Sky";import { useAddWorkspace } from "./addws";
 import { AddWorkspacePrompt } from "./AddWorkspacePrompt";
-import { PaneTabs } from "./PaneTabs";
+import { PaneTabs, usePaneTabs } from "./PaneTabs";
 import { onShowsSessionTabsChange, showsSessionTabs } from "../state/prefs";
 import { useLiveGrace } from "./useLiveGrace";
-import { isUnread, useViewed, useUnreadBadge } from "./unread";
+import { useViewed, useUnreadBadge } from "./unread";
 import { Onboarding } from "./Onboarding";
 import { Welcome } from "./Welcome";
 import { useSessionSwitch } from "./sessionswitch";
@@ -116,7 +117,10 @@ export function App({ hub }: { hub: HubPort }) {
   // false = closed, true = open at its last section, a string = open there.
   const [settings, setSettings] = useState<string | boolean>(false);
   const [feedback, setFeedback] = useState<FeedbackTab | null>(null);
-  const [tutor, setTutor] = useState(consumeTutorHash);
+  // The study tutor is the app's surface; the agent chat — Reasonix's full
+  // surface — is a page within it. A #tutor or #chat address picks once.
+  const [surface, setSurface] = useState<"tutor" | "chat">(() => consumeSurfaceHash() ?? "tutor");
+  const [tutorView, setTutorView] = useState<TutorView>({ k: "home" });
   const [feedbackUnread, setFeedbackUnread] = useState(0);
   const [browser, setBrowser] = useState(false);
   const [browserAsk, setBrowserAsk] = useState(0);
@@ -441,33 +445,8 @@ export function App({ hub }: { hub: HubPort }) {
     void reloadPanes();
   }, [activePort, reloadAccount, reloadPanes]);
 
-  // A pane's label comes from the tree row it opened, so the sidebar and the
-  // tab never disagree. An unnamed session gets a number rather than a third
-  // "新会话" — with several open, identical labels are the same as no labels.
-  const titleFor = useCallback(
-    (rt: RuntimeView, at: number) => {
-      for (const ws of tree) {
-        for (const session of ws.sessions) {
-          // An unwritten one has only a file name; the numbered fallback reads better.
-          if (session.runtimeId === rt.id && (session.title || session.turns)) return session.title || session.name;
-        }
-      }
-      return at === 0 ? t("新会话") : t("新会话 {n}", { n: at + 1 });
-    },
-    [tree],
-  );
-
-  const tabs = useMemo(
-    () =>
-      runtimes.map((rt, i) => ({
-        rt,
-        title: titleFor(rt, i),
-        run: runs[rt.id]?.run ?? "idle",
-        live: runs[rt.id]?.live ?? false,
-        unread: isUnread(rt, viewed.tree, viewed.remote),
-      })),
-    [runtimes, titleFor, runs, viewed.tree, viewed.remote],
-  );
+  // The pane strip's rows, and the label source the sidebar shares with it.
+  const tabs = usePaneTabs(tree, runtimes, runs, viewed.tree, viewed.remote);
   // The folder only earns tab space when the panes actually span more than one.
   const manyRoots = useMemo(() => new Set(runtimes.map((rt) => rt.root)).size > 1, [runtimes]);
   const activeRuntime = runtimes.find((rt) => rt.id === active);
@@ -564,6 +543,7 @@ export function App({ hub }: { hub: HubPort }) {
     <div
       className="app"
       data-run={report.run}
+      data-surface={surface}
       data-rail={rail ? "on" : "off"}
       data-nav={navRail.shown ? "on" : "off"}
       data-browser={browser ? "on" : "off"}
@@ -580,7 +560,7 @@ export function App({ hub }: { hub: HubPort }) {
         host={runtimes.find((rt) => rt.id === active)?.host}
         port={activePort}
         status={report.status}
-        title={tabs.find((tab) => tab.rt.id === active)?.title ?? report.title}
+        title={surface === "tutor" ? t("学习导师") : (tabs.find((tab) => tab.rt.id === active)?.title ?? report.title)}
         steer={report.steer}
         onSettings={showPrefs}
         onBrowser={() => {
@@ -597,6 +577,17 @@ export function App({ hub }: { hub: HubPort }) {
 
       {pack?.sky && effects !== "reduced" && <Sky />}
 
+      {surface === "tutor" ? (
+        <TutorSurface
+          port={tutorPort}
+          view={tutorView}
+          onGo={setTutorView}
+          onChat={() => setSurface("chat")}
+          onSettings={() => showPrefs()}
+          onError={setError}
+          notice={errorBar}
+        />
+      ) : (
       <div className="cols">
         {navRail.drawn && (
           <Nav
@@ -606,7 +597,7 @@ export function App({ hub }: { hub: HubPort }) {
             onHome={hidePrefs}
             onRail={() => setRail((v) => !v)}
             onFeedback={() => setFeedback(feedbackEntryTab(feedbackUnread))}
-            onTutor={() => setTutor(true)}
+            onTutor={() => setSurface("tutor")}
             onNew={() => {
               hidePrefs();
               void openPane({ root: newSessionRoot }).catch(fail);
@@ -652,7 +643,7 @@ export function App({ hub }: { hub: HubPort }) {
           onSettings={showPrefs}
           onFiles={openFiles}
           onFeedback={(tab) => setFeedback(tab ?? "send")}
-          onTutor={() => setTutor(true)}
+          onTutor={() => setSurface("tutor")}
           feedbackUnread={feedbackUnread}
           onFind={openFind}
           onError={fail}
@@ -754,6 +745,7 @@ export function App({ hub }: { hub: HubPort }) {
         </div>
 
       </div>
+      )}
 
       {adder.pathOpen && <AddWorkspacePrompt busy={adder.busy} onSubmit={adder.addPath} onClose={adder.closePath} />}
       {renaming && (
@@ -764,8 +756,6 @@ export function App({ hub }: { hub: HubPort }) {
       {feedback && activePort && (
         <Feedback port={machinePort} tab={feedback} onClose={() => setFeedback(null)} onError={setError} onUnread={setFeedbackUnread} />
       )}
-
-      {tutor && <TutorSheet port={tutorPort} onClose={() => setTutor(false)} onError={setError} />}
 
       {settings && activePort && (
         <Boundary fallback={<SettingsUnavailable onClose={hidePrefs} />}>
@@ -799,7 +789,7 @@ export function App({ hub }: { hub: HubPort }) {
         </Suspense>
         </Boundary>
       )}
-      <RailToggle rail={rail} onRail={() => setRail((v) => !v)} />
+      {surface === "chat" && <RailToggle rail={rail} onRail={() => setRail((v) => !v)} />}
       <StopHint armed={stopArmed} />
     </div>
   );

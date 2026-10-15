@@ -47,6 +47,10 @@ describe("a reloaded window", () => {
     });
     first.unmount();
 
+    // A reload lands on the tutor surface by design; this test is about which
+    // pane the chat window comes back to, so it is relaunched on the chat
+    // address the way the first mount was.
+    window.location.hash = "#chat";
     render(<App hub={kernel} />);
     await waitFor(() => expect(title()).toBe(chosen));
   });

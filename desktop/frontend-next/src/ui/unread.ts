@@ -3,7 +3,7 @@ import { host } from "../port/host";
 import type { AgentPort } from "../port/port";
 import type { RuntimeView, TreeWorkspace } from "../port/hub";
 
-type Trees = Record<string, TreeWorkspace[] | null>;
+export type Trees = Record<string, TreeWorkspace[] | null>;
 
 const keyOf = (host: string | undefined, path: string) => `${host ?? ""}\n${path}`;
 

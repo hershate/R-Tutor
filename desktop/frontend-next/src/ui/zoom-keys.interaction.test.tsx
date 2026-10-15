@@ -32,6 +32,9 @@ function held() {
 }
 
 async function mount(hub: MockHub, port: AgentPort) {
+  // A reload lands on the tutor surface by design; this suite is about the
+  // chat window's composer, so every mount launches on the chat address.
+  window.location.hash = "#chat";
   const read = vi.spyOn(port, "appearance");
   render(<App hub={hub} />);
   const box = await waitFor(() => {

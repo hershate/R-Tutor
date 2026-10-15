@@ -602,11 +602,10 @@ export const ACTIONS: UIAction[] = [
   //    gutter's own grip, which this pass has not annotated yet.
   { id: "rail.toggle", kind: "view", target: "none", proof: "interaction" },
 
-  // ── The study tutor sheet. One sheet, its own view family; generation
-  //    streams live outside the React tree, so most of these steer a ledger
-  //    the engine owns rather than issuing a request per click.
+  // ── The study tutor surface. It is the app's home surface with its own view
+  //    family; generation streams live outside the React tree, so most of these
+  //    steer a ledger the engine owns rather than issuing a request per click.
   { id: "tutor.open", kind: "navigation", target: "none", proof: "interaction" },
-  { id: "tutor.close", kind: "view", target: "none", proof: "interaction" },
   { id: "tutor.nav", kind: "navigation", target: "none", proof: "interaction" },
   { id: "tutor.tab", kind: "view", target: "none", proof: "interaction" },
   { id: "tutor.version", kind: "kernel-mutation", target: "entity", proof: "interaction" },
@@ -618,6 +617,10 @@ export const ACTIONS: UIAction[] = [
   { id: "tutor.back-home", kind: "navigation", target: "none", proof: "interaction" },
   { id: "tutor.partial", kind: "view", target: "none", proof: "interaction" },
   { id: "tutor.search", kind: "navigation", target: "none", proof: "interaction" },
+  // The surface's two exits: the app settings, and the agent chat where
+  // Reasonix's full surface lives.
+  { id: "tutor.settings", kind: "navigation", target: "none", proof: "interaction" },
+  { id: "tutor.chat", kind: "navigation", target: "none", proof: "interaction" },
   { id: "tutor.search-q", kind: "view", target: "none", proof: "interaction" },
   { id: "tutor.goal", kind: "view", target: "none", proof: "interaction" },
   { id: "tutor.daily", kind: "view", target: "none", proof: "interaction" },
@@ -661,6 +664,7 @@ export const ACTIONS: UIAction[] = [
   { id: "tutor.checkin", kind: "kernel-mutation", target: "entity", proof: "interaction" },
   { id: "tutor.log-del", kind: "destructive", target: "entity", proof: "interaction" },
   { id: "tutor.review-mode", kind: "view", target: "none", proof: "interaction" },
+  { id: "tutor.review-refresh", kind: "view", target: "none", proof: "interaction" },
   { id: "tutor.review-pick", kind: "interaction", target: "entity", proof: "interaction" },
   { id: "tutor.review-judge", kind: "kernel-mutation", target: "entity", proof: "interaction" },
   { id: "tutor.review-weak", kind: "kernel-mutation", target: "none", proof: "interaction" },

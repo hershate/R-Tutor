@@ -1,8 +1,9 @@
-// The tutor sheet's wording, keyed by its Chinese source strings like every
+// The tutor surface's wording, keyed by its Chinese source strings like every
 // other EN module.
 export const EN_TUTOR: Record<string, string> = {
   "学习导师": "Study Tutor",
   "学习导航": "Study navigation",
+  "聊天": "Chat",
   "学习目标": "Study goal",
   "我的方案": "My plans",
   "复习": "Review",

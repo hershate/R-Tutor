@@ -30,6 +30,9 @@ async function hub(panes = 2) {
 }
 
 function draw(kernel: MockHub) {
+  // A remount lands on the tutor surface by design; this suite is about the
+  // chat window's tab strip, so every draw launches on the chat address.
+  window.location.hash = "#chat";
   return render(<>
     <App hub={kernel} />
     <Appearance port={new MockPort()} theme="light" onTheme={() => {}} contrast="" onContrast={() => {}}
