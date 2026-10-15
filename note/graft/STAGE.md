@@ -105,6 +105,18 @@ Checklist 全 ✅，Deep Tutor 语义逐条对位移植。架构与映射决策�
   SECURITY/USAGE_CATALOG/BILLING
 - 闸门 make check+lint 绿
 
+**性能优化第 9 轮（2026-10-16 凌晨，/goal 持续性能优化，新面：前端首载）**：
+
+- 前八轮全在 Go 侧（见 note/report/perf/README.md）；本轮换到 SPA 首屏
+- feat：聊天面树原样搬 ChatPage.tsx（props 解构、JSX 逐字不变、hook 留 App），
+  App 以 Settings 同款「随壳预取 + lazy」挂载——导师首屏不解析聊天面代码
+- 量化（benchmark/frontend_bundle_bench.mjs，确定性）：eager JS 1309.6→883.4KB
+  （-32.6%，gzip -31.1%）、index 单块 781→355KB（-54.6%）、聊天面 406KB 转预取懒块
+- 验证：tsc 0 / vitest 548×4673 全绿（1 例同步查询改等懒块）/ census 金样不变 /
+  CDP 实机 17 检查全绿（聊天翻转、#tutor 回返、零控制台异常）
+- 坑位：`reasonix web` 的 -addr 而非 -addr/-port 混写；remote/ 令牌文件取最新要按
+  mtime（ls -t），字典序会拿到旧 pid 的令牌 → assets 401 → 卡「正在连接内核…」
+
 ## 闸门口径（复核用）
 
 make lint（golangci 0 issues + repolint clean 2693 零加宽）；make check；tutor 全包
