@@ -44,8 +44,8 @@
 <br/>
 
 <p align="center"><strong>Open source · MIT · runs on your computer, model of your choice</strong></p>
-<h3 align="center">An open-source coding agent for your terminal, desktop, browser and editor.</h3>
-<p align="center">It reads your project, edits files and runs commands and tests. Have it ask before each step, or work on its own within limits you set. Files its edit tools changed can be rewound. New here? Start with the Studio desktop app.</p>
+<h3 align="center">An open-source study tutor, with the full coding agent on its chat page — terminal, desktop, browser and editor.</h3>
+<p align="center">The tutor turns your material and a goal into a staged plan, then keeps the studying going. Its chat page is the agent: it reads your project, edits files and runs commands and tests. Have it ask before each step, or work on its own within limits you set. Files its edit tools changed can be rewound. New here? Start with the Studio desktop app.</p>
 <p align="center">Maintained by <strong>Huahui Yu</strong>.</p>
 
 > [!IMPORTANT]
@@ -63,33 +63,37 @@
 
 ## What it is
 
-Reasonix is an open-source AI coding assistant. The program runs on your computer; the AI model is a service you configure, which receives what it reads. You describe a task in plain language; it reads code, edits files and runs commands and tests inside the project folder you choose, and shows you each step.
+Reasonix is an open-source study tool. The program runs on your computer; the AI model is a service you configure, which receives what it reads. Every windowed frontend — the Studio desktop app and `reasonix web` alike — opens on the Study Tutor.
+
+There you describe what you want to learn and add material; the tutor stages a plan with scheduled units, quizzes, a spaced-review wrong-answer deck, notes and a searchable knowledge base.
+
+The coding agent is the tutor's chat page, one click away: it reads code, edits files and runs commands and tests inside the project folder you choose, and shows you each step. The terminal frontends are agent-first; the tutor's data sits on disk either way.
 
 You pick the model: a DeepSeek preset is built in, any OpenAI-compatible service is one config entry, and you pay the model provider directly.
 
 ## What you get
 
-- **Read, edit, run.** It reads code, edits files and runs tests and commands, all inside your project folder.
-- **Study Tutor.** Turn material and a goal into a staged study plan: scheduled units, quizzes with a spaced-review wrong-answer deck, notes, a searchable knowledge base, and exports to Markdown, calendar, Anki and HTML slides. See the [Tutor guide](./docs/TUTOR.md).
+- **Study Tutor.** Turn material and a goal into a staged study plan: scheduled units, quizzes with a spaced-review wrong-answer deck, notes, a searchable knowledge base, and exports to Markdown, calendar, Anki and HTML slides. It is the surface every window opens on. See the [Tutor guide](./docs/TUTOR.md).
+- **Read, edit, run.** The chat page is the full agent: it reads code, edits files and runs tests and commands, all inside your project folder.
 - **Permission levels.** Have it ask every time, or let everyday actions run on their own; your forbid rules always hold. To see the approach first, use plan mode: it starts work only once you approve.
 - **Rewind.** A file is saved before it changes, so you can rewind by conversation turn without touching your git history. Only files its edit tools changed are covered, not what a shell command did.
 
 ## 30-second start
 
-Download, add a model key, open a project. New here? Start with the Studio desktop app.
+Download, add a model key, state a goal. New here? Start with the Studio desktop app.
 
 1. Download and install the desktop app, Reasonix Studio, from the [releases page](https://github.com/esengine/DeepSeek-Reasonix/releases?q=studio-v&expanded=true).
 2. Open it and enter your model provider and key when asked.
-3. Open your project folder and write what you want, for example "add retry on failure to the http client".
-4. At the level you chose, it stops and asks before anything that needs your say-so. Allow it to continue, or refuse.
+3. You land on the Study Tutor: write what you want to learn, add material if you have any, and let it stage a plan you can study, quiz and review against.
+4. Want code done instead? The chat page (聊天) is the full agent — open a project folder and write what you want, for example "add retry on failure to the http client". At the level you chose, it stops and asks before anything that needs your say-so.
 
 Prefer a terminal? Download the `reasonix` command-line tool, run `reasonix setup` to pick a model, then run `reasonix`. See [Install](#install) and [Quick start](#quick-start).
 
 ## Four ways to use it
 
-- **Desktop app (Studio).** A graphical app; the best place to start.
+- **Desktop app (Studio).** A graphical app; the best place to start. It opens on the Study Tutor; the chat page carries the full agent.
 - **Terminal.** A full-screen text interface; `reasonix run "task"` also works in scripts.
-- **Browser.** `reasonix web` opens a web interface on your own machine.
+- **Browser.** `reasonix web` opens the same tutor-first web interface on your own machine.
 - **Editor.** Install the extension in VS Code; other editors that support ACP (Agent Client Protocol, a common way for an editor to connect to an AI assistant) can connect to `reasonix acp`.
 
 All four are the same program underneath. What follows is for advanced users and contributors.
