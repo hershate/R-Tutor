@@ -184,7 +184,13 @@ func decodePDFName(raw []byte) string {
 
 // readLiteralString decodes (…) with escapes; the return excludes the braces.
 func (l *pdfLexer) readLiteralString() (string, int) {
-	var out []byte
+	// Size from the next delimiter when one is in sight: the append chain
+	// from nil re-copied every literal string several times over.
+	est := bytes.IndexByte(l.data[l.pos+1:], ')')
+	if est < 0 || est > 1<<16 {
+		est = 64
+	}
+	out := make([]byte, 0, est+1)
 	depth := 1
 	i := l.pos + 1
 	for i < len(l.data) {

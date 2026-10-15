@@ -32,7 +32,7 @@ func (f *fakeLLM) Stream(_ context.Context, req provider.Request) (<-chan provid
 type fakeSearcher struct{}
 
 func (fakeSearcher) Search(context.Context, ResourceQuery) (SearchOutcome, error) {
-	return SearchOutcome{Engine: "bing_web", Resources: []Resource{{
+	return SearchOutcome{Engine: "fixture/search-model", Resources: []Resource{{
 		StageIndex: 0, Title: "React 官方教程", URL: "https://react.dev/learn",
 		Type: ResourceTutorial, Verified: VerifyOK,
 	}}}, nil

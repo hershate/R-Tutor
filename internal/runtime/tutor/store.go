@@ -21,10 +21,13 @@ import (
 var ErrNotFound = errors.New("tutor: not found")
 
 // Store persists the tutor domain as JSON files under one root, one
-// aggregate per file, every write atomic. Store is stateless: methods only
-// compute paths and touch files, so disjoint sessions need no locking.
+// aggregate per file, every write atomic. List reads go through a
+// stat-validated decode cache (storecache.go): every call still stats the
+// files, so external edits and separate Store values over one root stay
+// coherent, while unchanged files skip their JSON decode.
 type Store struct {
-	root string
+	root  string
+	cache storeCache
 }
 
 // GenSession is one plan-generation workspace: the uploaded materials, the
@@ -59,6 +62,10 @@ type PlanSummary struct {
 
 type planIndex struct {
 	Plans []PlanSummary `json:"plans"`
+	// Stamps records each plan.json's size+mtime at index time, keyed by
+	// plan dir name, so the next reindex can reuse the summary of every
+	// file that has not moved since.
+	Stamps map[string]fileStamp `json:"stamps,omitempty"`
 }
 
 func OpenStore(root string) (*Store, error) {
@@ -68,7 +75,11 @@ func OpenStore(root string) (*Store, error) {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return nil, err
 	}
-	return &Store{root: root}, nil
+	store := &Store{root: root}
+	store.cache.sessions = make(map[string]stamped[*GenSession])
+	store.cache.notes = make(map[string]stamped[Note])
+	store.cache.nodes = make(map[string]stamped[[]planNodeRef])
+	return store, nil
 }
 
 func (s *Store) Root() string { return s.root }
@@ -153,11 +164,22 @@ func (s *Store) DeleteSession(id string) error {
 		if err := s.deleteSharesForPlan(sess.PlanID); err != nil {
 			return err
 		}
-		if err := s.reindexPlans(); err != nil {
+		if err := s.reindexPlans(planHint{}); err != nil {
 			return err
 		}
 	}
 	return os.RemoveAll(s.sessionDir(id))
+}
+
+// Plans lists plan summaries newest-first from the stamped index, behind the
+// store's stat-validated cache.
+func (s *Store) Plans() ([]PlanSummary, error) {
+	plans, err := s.cachedPlans()
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(plans, func(i, j int) bool { return plans[i].UpdatedAt.After(plans[j].UpdatedAt) })
+	return plans, nil
 }
 
 // Sessions lists generation sessions, newest first.
@@ -169,16 +191,23 @@ func (s *Store) Sessions() ([]GenSession, error) {
 		}
 		return nil, err
 	}
-	var out []GenSession
+	var dirs []string
 	for _, e := range entries {
-		if !e.IsDir() {
-			continue
+		if e.IsDir() {
+			dirs = append(dirs, e.Name())
 		}
-		sess, err := s.Session(e.Name())
-		if err != nil {
-			continue
+	}
+	// Sessions load in parallel — each is its own file — and land back in
+	// directory order, so the recency sort below sees a stable input.
+	loaded := make([]*GenSession, len(dirs))
+	parallelFor(len(dirs), func(i int) {
+		loaded[i] = s.cachedSession(dirs[i])
+	})
+	var out []GenSession
+	for _, sess := range loaded {
+		if sess != nil {
+			out = append(out, *sess)
 		}
-		out = append(out, *sess)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].CreatedAt.After(out[j].CreatedAt) })
 	return out, nil
@@ -354,15 +383,41 @@ func (s *Store) ReadMaterialsIndex(planID string) (string, error) {
 	return string(data), nil
 }
 
+// planHint is what SavePlan hands the reindex: the summary of the plan it
+// just persisted, stamped as of that write. The reindex trusts it only while
+// the file still carries the same stamp — anything else re-reads.
+type planHint struct {
+	id      string
+	stamp   fileStamp
+	summary PlanSummary
+}
+
+func summaryOf(p *Plan) PlanSummary {
+	return PlanSummary{
+		ID: p.ID, SessionID: p.SessionID, Title: p.Title, Topic: p.Topic,
+		Version: p.Version, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
+	}
+}
+
 func (s *Store) SavePlan(p *Plan) error {
 	p.UpdatedAt = time.Now()
-	if err := s.writeJSON(filepath.Join(s.planDir(p.ID), "plan.json"), p); err != nil {
+	// plan.json and the version snapshot are the same bytes: marshal once,
+	// write twice.
+	data, err := json.MarshalIndent(p, "", "  ")
+	if err != nil {
 		return err
 	}
-	if err := s.writeJSON(filepath.Join(s.planDir(p.ID), "versions", fmt.Sprintf("v%03d.json", p.Version)), p); err != nil {
+	if err := s.writeRaw(filepath.Join(s.planDir(p.ID), "plan.json"), data); err != nil {
 		return err
 	}
-	return s.reindexPlans()
+	if err := s.writeRaw(filepath.Join(s.planDir(p.ID), "versions", fmt.Sprintf("v%03d.json", p.Version)), data); err != nil {
+		return err
+	}
+	hint := planHint{summary: summaryOf(p)}
+	if info, err := os.Stat(filepath.Join(s.planDir(p.ID), "plan.json")); err == nil {
+		hint.id, hint.stamp = p.ID, stampOf(info)
+	}
+	return s.reindexPlans(hint)
 }
 
 func (s *Store) Plan(id string) (*Plan, error) {
@@ -382,19 +437,12 @@ func (s *Store) PlanVersion(id string, version int) (*Plan, error) {
 	return &p, nil
 }
 
-func (s *Store) Plans() ([]PlanSummary, error) {
-	var idx planIndex
-	if err := s.readJSON(filepath.Join(s.root, "plans", "index.json"), &idx); err != nil {
-		if errors.Is(err, ErrNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	sort.Slice(idx.Plans, func(i, j int) bool { return idx.Plans[i].UpdatedAt.After(idx.Plans[j].UpdatedAt) })
-	return idx.Plans, nil
-}
-
-func (s *Store) reindexPlans() error {
+// reindexPlans rebuilds plans/index.json. Every plan dir is stat'ed in
+// parallel — on a filtered filesystem each stat is a syscall; a plan.json
+// whose stamp matches the previous index keeps its summary, and a save's
+// hint skips even the read for the plan just written while its stamp holds.
+// A legacy index without stamps decodes everything once, then self-heals.
+func (s *Store) reindexPlans(hint planHint) error {
 	entries, err := os.ReadDir(filepath.Join(s.root, "plans"))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -402,21 +450,75 @@ func (s *Store) reindexPlans() error {
 		}
 		return err
 	}
-	idx := planIndex{}
+	var dirs []string
 	for _, e := range entries {
-		if !e.IsDir() {
-			continue
+		if e.IsDir() {
+			dirs = append(dirs, e.Name())
 		}
-		p, err := s.Plan(e.Name())
+	}
+	var prev planIndex
+	_ = s.readJSON(filepath.Join(s.root, "plans", "index.json"), &prev)
+	prevSummaries := make(map[string]PlanSummary, len(prev.Plans))
+	for _, p := range prev.Plans {
+		prevSummaries[p.ID] = p
+	}
+	type planScan struct {
+		summary PlanSummary
+		stamp   fileStamp
+		ok      bool
+	}
+	scans := make([]planScan, len(dirs))
+	parallelFor(len(dirs), func(i int) {
+		info, err := os.Stat(filepath.Join(s.planDir(dirs[i]), "plan.json"))
 		if err != nil {
+			return
+		}
+		stamp := stampOf(info)
+		if hint.id == dirs[i] && hint.stamp == stamp {
+			scans[i] = planScan{hint.summary, stamp, true}
+			return
+		}
+		if summary, ok := prevSummaries[dirs[i]]; ok && prev.Stamps[dirs[i]] == stamp {
+			scans[i] = planScan{summary, stamp, true}
+			return
+		}
+		if summary, ok := s.planSummaryOf(dirs[i]); ok {
+			scans[i] = planScan{summary, stamp, true}
+		}
+	})
+	idx := planIndex{Stamps: make(map[string]fileStamp)}
+	for i, sc := range scans {
+		if !sc.ok {
 			continue
 		}
-		idx.Plans = append(idx.Plans, PlanSummary{
-			ID: p.ID, SessionID: p.SessionID, Title: p.Title, Topic: p.Topic,
-			Version: p.Version, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
-		})
+		idx.Plans = append(idx.Plans, sc.summary)
+		idx.Stamps[dirs[i]] = sc.stamp
 	}
 	return s.writeJSON(filepath.Join(s.root, "plans", "index.json"), &idx)
+}
+
+// planNodeRef is the node slice search walks: the two fields a hit carries.
+type planNodeRef struct {
+	SID  string `json:"id"`
+	Name string `json:"name"`
+}
+
+// planSummaryOf reads only the index fields of one plan — PlanSummary's own
+// tags are the lean view, so the file decodes straight into it and the
+// knowledge map, schedule, and resource graph never enter memory.
+func (s *Store) planSummaryOf(id string) (PlanSummary, bool) {
+	var summary PlanSummary
+	if err := s.readJSON(filepath.Join(s.planDir(id), "plan.json"), &summary); err != nil {
+		return PlanSummary{}, false
+	}
+	return summary, true
+}
+
+// planNodeNames reads only a plan's knowledge node list; SearchAll walks
+// every plan and needs nothing else from it. The stat-validated cache makes
+// repeat searches skip the decode of every unchanged plan.
+func (s *Store) planNodeNames(id string) ([]planNodeRef, error) {
+	return s.cachedNodeNames(id)
 }
 
 func (s *Store) quizzesPath(planID string) string {
@@ -531,14 +633,33 @@ func (s *Store) Notes() ([]Note, error) {
 		}
 		return nil, err
 	}
-	var out []Note
+	// The enumeration already carries each file's size+mtime, so the stamp
+	// check below needs no per-file syscall.
+	type noteFile struct {
+		name string
+		info os.FileInfo
+	}
+	var files []noteFile
 	for _, e := range entries {
 		if !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
-		var n Note
-		if err := s.readJSON(filepath.Join(s.notesDir(), e.Name()), &n); err == nil {
-			out = append(out, n)
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		files = append(files, noteFile{e.Name(), info})
+	}
+	// Notes load in parallel into indexed slots; order is restored by the
+	// recency sort below.
+	loaded := make([]*Note, len(files))
+	parallelFor(len(files), func(i int) {
+		loaded[i] = s.cachedNote(files[i].name, files[i].info)
+	})
+	var out []Note
+	for _, n := range loaded {
+		if n != nil {
+			out = append(out, *n)
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].UpdatedAt.After(out[j].UpdatedAt) })

@@ -2,6 +2,7 @@ package tutor
 
 import (
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -66,6 +67,38 @@ func snippetAround(text, q string) string {
 	return out
 }
 
+// containsFold answers whether hay contains the already-lowercased needle
+// case-insensitively, without copying hay: search walks every node name and
+// note body, and ToLower-per-call dominated its allocation profile. The
+// store's JSON is valid UTF-8, so the rune-wise fold matches strings.ToLower
+// exactly on this input.
+func containsFold(hay, lowNeedle string) bool {
+	if lowNeedle == "" {
+		return true
+	}
+	first, _ := utf8.DecodeRuneInString(lowNeedle)
+	for i := 0; i < len(hay); {
+		r, size := utf8.DecodeRuneInString(hay[i:])
+		if unicode.ToLower(r) == first && foldMatchAt(hay[i:], lowNeedle) {
+			return true
+		}
+		i += size
+	}
+	return false
+}
+
+// foldMatchAt compares s's leading runes against the lowercased needle.
+func foldMatchAt(s, lowNeedle string) bool {
+	for _, want := range lowNeedle {
+		r, size := utf8.DecodeRuneInString(s)
+		if size == 0 || unicode.ToLower(r) != want {
+			return false
+		}
+		s = s[size:]
+	}
+	return true
+}
+
 // SearchAll runs one substring query across plans (topic/title), knowledge
 // nodes (name, tagged with their plan's topic), notes (title/body with
 // a snippet), and KB documents (titles everywhere, content in the newest-50
@@ -93,8 +126,7 @@ func SearchAll(store *Store, query string, limit int) (SearchResults, error) {
 		return res, err
 	}
 	for _, p := range plans {
-		if !strings.Contains(strings.ToLower(p.Topic), q) &&
-			!strings.Contains(strings.ToLower(p.Title), q) {
+		if !containsFold(p.Topic, q) && !containsFold(p.Title, q) {
 			continue
 		}
 		res.Plans.Total++
@@ -106,22 +138,13 @@ func SearchAll(store *Store, query string, limit int) (SearchResults, error) {
 	}
 
 	// Nodes: every plan's knowledge map, each hit tagged with its plan.
-	for _, p := range plans {
-		plan, err := store.Plan(p.ID)
-		if err != nil {
-			continue
+	nodeItems, nodeTotal := scanNodes(store, plans, q, limit)
+	res.Nodes.Total = nodeTotal
+	for _, it := range nodeItems {
+		if len(res.Nodes.Items) >= limit {
+			break
 		}
-		for _, n := range plan.Knowledge.Nodes {
-			if !strings.Contains(strings.ToLower(n.Name), q) {
-				continue
-			}
-			res.Nodes.Total++
-			if len(res.Nodes.Items) < limit {
-				res.Nodes.Items = append(res.Nodes.Items, SearchItem{
-					ID: n.SID, PlanID: plan.ID, Name: n.Name, PlanTopic: p.Topic,
-				})
-			}
-		}
+		res.Nodes.Items = append(res.Nodes.Items, it)
 	}
 
 	notes, err := store.Notes()
@@ -129,8 +152,8 @@ func SearchAll(store *Store, query string, limit int) (SearchResults, error) {
 		return res, err
 	}
 	for _, n := range notes {
-		hitTitle := strings.Contains(strings.ToLower(n.Title), q)
-		hitBody := strings.Contains(strings.ToLower(n.Body), q)
+		hitTitle := containsFold(n.Title, q)
+		hitBody := containsFold(n.Body, q)
 		if !hitTitle && !hitBody {
 			continue
 		}
@@ -154,7 +177,7 @@ func SearchAll(store *Store, query string, limit int) (SearchResults, error) {
 	titleHit := map[string]bool{}
 	for i := range kbDocs {
 		d := &kbDocs[i]
-		if !strings.Contains(strings.ToLower(d.Title), q) {
+		if !containsFold(d.Title, q) {
 			continue
 		}
 		titleHit[d.ID] = true
@@ -175,4 +198,40 @@ func SearchAll(store *Store, query string, limit int) (SearchResults, error) {
 		}
 	}
 	return res, nil
+}
+
+// scanNodes walks every plan's node names for the needle — plans in
+// parallel, hits merged in list order so the result set is deterministic.
+// Only the node list is decoded; the rest of a plan never enters memory.
+func scanNodes(store *Store, plans []PlanSummary, q string, limit int) ([]SearchItem, int) {
+	type planHits struct {
+		items []SearchItem
+		total int
+	}
+	hits := make([]planHits, len(plans))
+	parallelFor(len(plans), func(i int) {
+		nodes, err := store.planNodeNames(plans[i].ID)
+		if err != nil {
+			return
+		}
+		p := plans[i]
+		for _, n := range nodes {
+			if !containsFold(n.Name, q) {
+				continue
+			}
+			hits[i].total++
+			if len(hits[i].items) < limit {
+				hits[i].items = append(hits[i].items, SearchItem{
+					ID: n.SID, PlanID: p.ID, Name: n.Name, PlanTopic: p.Topic,
+				})
+			}
+		}
+	})
+	var items []SearchItem
+	total := 0
+	for i := range plans {
+		total += hits[i].total
+		items = append(items, hits[i].items...)
+	}
+	return items, total
 }

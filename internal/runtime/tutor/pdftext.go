@@ -47,14 +47,56 @@ func (f *pdfFont) decode(raw []byte) string {
 	return sb.String()
 }
 
+// decodeString is decode for operands the lexer already handed over as
+// strings: simple fonts decode without the byte-slice copy.
+func (f *pdfFont) decodeString(raw string) string {
+	if f == nil || f.simple {
+		return decodeCP1252String(raw)
+	}
+	if f.undecodable {
+		return ""
+	}
+	return f.decode([]byte(raw))
+}
+
 var cp1252 = charmap.Windows1252.NewDecoder()
 
-func decodeCP1252(raw []byte) string {
-	text, err := cp1252.Bytes(raw)
-	if err != nil {
-		return strings.ToValidUTF8(string(raw), "\uFFFD")
+// cp1252Runes holds the byte→rune table the x/text charmap defines, walked
+// directly per string instead of through the transform pipeline.
+var cp1252Runes = func() [256]rune {
+	var table [256]rune
+	for b := range 256 {
+		decoded, err := cp1252.Bytes([]byte{byte(b)})
+		if err != nil || len(decoded) == 0 {
+			table[b] = 0xFFFD
+			continue
+		}
+		for _, r := range string(decoded) {
+			table[b] = r
+			break
+		}
 	}
-	return string(text)
+	return table
+}()
+
+func decodeCP1252(raw []byte) string {
+	return decodeCP1252String(string(raw))
+}
+
+// decodeCP1252String walks the table directly: pure-ASCII input — the bulk
+// of Latin documents — returns without copying at all.
+func decodeCP1252String(raw string) string {
+	for i := range len(raw) {
+		if raw[i] >= 0x80 {
+			out := make([]rune, 0, len(raw))
+			out = append(out, []rune(raw[:i])...)
+			for j := i; j < len(raw); j++ {
+				out = append(out, cp1252Runes[raw[j]])
+			}
+			return string(out)
+		}
+	}
+	return raw
 }
 
 // utf16BE decodes CMap destination bytes.
@@ -267,6 +309,9 @@ type pdfTextState struct {
 var identityMatrix = [6]float64{1, 0, 0, 1, 0, 0}
 
 func (x *pdfTextState) run(content []byte) {
+	// A page's lines fit one buffer; growing from empty re-copied each line
+	// through the builder's doubling chain.
+	x.line.Grow(min(2048, len(content)/8))
 	lex := &pdfLexer{data: content}
 	var operands []pdfObj
 	for {
@@ -365,15 +410,26 @@ func (x *pdfTextState) operate(op string, operands []pdfObj) {
 // showOperand shows one text-bearing operand; content streams may spell the
 // string as a literal or as a hex string.
 func (x *pdfTextState) showOperand(v pdfObj) {
-	var raw []byte
 	switch s := v.(type) {
 	case string:
-		raw = []byte(s)
+		x.show(s)
 	case pdfHexString:
-		raw = s
+		x.showBytes(s)
 	default:
-		return
 	}
+}
+
+func (x *pdfTextState) show(text string) {
+	x.breakIfMoved()
+	x.line.WriteString(x.current.decodeString(text))
+}
+
+func (x *pdfTextState) showBytes(raw []byte) {
+	x.breakIfMoved()
+	x.line.WriteString(x.current.decode(raw))
+}
+
+func (x *pdfTextState) breakIfMoved() {
 	if x.moved && x.line.Len() > 0 {
 		if !x.haveLineY || abs64(x.tm[5]-x.lineY) > 3 {
 			x.lineBreak()
@@ -383,7 +439,6 @@ func (x *pdfTextState) showOperand(v pdfObj) {
 		x.lineY, x.haveLineY = x.tm[5], true
 	}
 	x.moved = false
-	x.line.WriteString(x.current.decode(raw))
 }
 
 func (x *pdfTextState) lineBreak() {
@@ -423,9 +478,18 @@ func parsePDF(data []byte) (*ParsedMaterial, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrUnsupportedFormat, err)
 	}
+	// Pages share the file's object map read-only — no parse-time lazy
+	// caching — so each page's content streams run on its own interpreter
+	// state in parallel, landing back in page order.
+	pageTexts := make([]string, len(pages))
+	parallelFor(len(pages), func(i int) {
+		if text := file.pageText(pages[i]); strings.TrimSpace(text) != "" {
+			pageTexts[i] = text
+		}
+	})
 	texts := make([]string, 0, len(pages))
-	for _, page := range pages {
-		if text := file.pageText(page); strings.TrimSpace(text) != "" {
+	for _, text := range pageTexts {
+		if text != "" {
 			texts = append(texts, text)
 		}
 	}

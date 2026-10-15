@@ -1,6 +1,7 @@
 package tutor
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -89,12 +90,14 @@ func parseFile(in MaterialInput) (*ParsedMaterial, error) {
 }
 
 func chunked(text, sourceType, parser string) *ParsedMaterial {
-	if len([]rune(text)) > MaxParsedChars {
-		runes := []rune(text)
-		text = string(runes[:MaxParsedChars]) + "\n…（超出长度上限已截断）"
-	}
-	chunks := make([]string, 0, len(text)/chunkSize+1)
+	// One rune conversion serves the cap check, the truncation, and the
+	// chunk slicing; converting per step rewalked the whole document.
 	runes := []rune(text)
+	if len(runes) > MaxParsedChars {
+		runes = runes[:MaxParsedChars]
+		text = string(runes) + "\n…（超出长度上限已截断）"
+	}
+	chunks := make([]string, 0, len(runes)/chunkSize+1)
 	for start := 0; start < len(runes); start += chunkSize {
 		end := min(start+chunkSize, len(runes))
 		chunks = append(chunks, string(runes[start:end]))
@@ -180,11 +183,14 @@ func isPrivateIP(ip net.IP) bool {
 // htmlToText extracts visible text: script/style drop, block elements break
 // lines, anchors keep their href when the label differs.
 func htmlToText(data []byte) (title, text string) {
-	doc, err := html.Parse(strings.NewReader(string(data)))
+	doc, err := html.Parse(bytes.NewReader(data))
 	if err != nil {
 		return "", string(data)
 	}
 	var sb strings.Builder
+	// One grow at the input's size: the walk's piecewise writes otherwise
+	// double-copy the whole document through the builder's growth chain.
+	sb.Grow(len(data))
 	var walk func(n *html.Node)
 	walk = func(n *html.Node) {
 		switch n.Type {

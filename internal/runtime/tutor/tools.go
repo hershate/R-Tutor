@@ -369,6 +369,14 @@ func (r *Runner) execSearchResources(ctx context.Context, in RunInput, outputs m
 		Stages: stages, Nodes: len(kmap.Nodes),
 	})
 	meta := metaFrom(outcome.Usage, r.Pricer, start)
+	// The web-search model spends under its own rate card; fold that into
+	// the same budget the screening gate's spend feeds.
+	if u := outcome.SearchUsage; u.InputTokens+u.OutputTokens > 0 {
+		meta.Tokens += u.InputTokens + u.OutputTokens
+		if r.Pricer != nil {
+			meta.Cost += r.Pricer(u.Model, u)
+		}
+	}
 	if err != nil {
 		return degradedOutput(ResourcesResult{Note: "检索失败：" + err.Error()}, "search_failed", meta)
 	}

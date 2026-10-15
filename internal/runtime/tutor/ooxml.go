@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/url"
 	"path"
 	"regexp"
@@ -45,17 +46,39 @@ func openZipGuarded(data []byte) (*zip.Reader, error) {
 	return reader, nil
 }
 
+// readZipEntry reads one entry under the unzip budget. The buffer is sized
+// from the directory so an honest entry is copied once; an entry that
+// streams past what it declared still lands on the budget error.
 func readZipEntry(z *zip.Reader, name string) ([]byte, error) {
-	f, err := z.Open(name)
+	var file *zip.File
+	for _, f := range z.File {
+		if f.Name == name {
+			file = f
+			break
+		}
+	}
+	if file == nil {
+		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+	}
+	r, err := file.Open()
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	data, err := io.ReadAll(io.LimitReader(f, zipMaxUncompressed+1))
+	defer r.Close()
+	hint := min(file.UncompressedSize64, zipMaxUncompressed)
+	data := make([]byte, hint)
+	n, err := io.ReadFull(r, data)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		return nil, err
+	}
+	rest, err := io.ReadAll(io.LimitReader(r, zipMaxUncompressed))
 	if err != nil {
 		return nil, err
 	}
-	return data, nil
+	if n+len(rest) > zipMaxUncompressed {
+		return nil, fmt.Errorf("%w: entry %s streams past its declared size", errZipBomb, name)
+	}
+	return append(data[:n], rest...), nil
 }
 
 // xmlParagraphs walks an XML token stream and returns, in document order, one
@@ -200,18 +223,27 @@ func parseEpub(data []byte) (*ParsedMaterial, error) {
 		return nil, fmt.Errorf("%w: %w", ErrUnsupportedFormat, err)
 	}
 	base := path.Dir(opfPath)
-	var texts []string
-	for _, idref := range order {
-		href, ok := hrefs[idref]
+	// Chapters are independent documents; the zip base is a bytes.Reader,
+	// whose ReadAt backing is safe to read concurrently, so each worker
+	// inflates and parses its own chapter. Slots keep the spine order.
+	bodies := make([]string, len(order))
+	parallelFor(len(order), func(i int) {
+		href, ok := hrefs[order[i]]
 		if !ok {
-			continue
+			return
 		}
 		doc, err := readZipEntry(z, epubResolve(base, href))
 		if err != nil {
-			continue
+			return
 		}
 		_, body := htmlToText(doc)
 		if strings.TrimSpace(body) != "" {
+			bodies[i] = body
+		}
+	})
+	var texts []string
+	for _, body := range bodies {
+		if body != "" {
 			texts = append(texts, body)
 		}
 	}
