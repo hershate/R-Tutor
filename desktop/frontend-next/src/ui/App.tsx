@@ -9,14 +9,11 @@ import type { HubPort, RuntimeView, TreeWorkspace } from "../port/hub";
 import { Chrome } from "./Chrome";
 import { RailToggle } from "./RailToggle";
 import { useLaunchHealth } from "./launchhealth";
-import { Nav } from "./Nav";
 import { useTreeWindow, type TreePaging } from "./treewindow";
 import { useNavRail } from "./navrail";
-import { feedbackEntryTab } from "./feedbackentry";
 import { useLinkRouting } from "./links";
-import { Pane, type PaneReport } from "./Pane";
 import { clearDraftForSession } from "./drafts";
-import { DOCK, Gutter, RAIL, dockMax, keepWidth, widthOf } from "./Gutter";
+import { DOCK, RAIL, dockMax, keepWidth, widthOf } from "./Gutter";
 import { useWindowKeys, type Shortcut } from "./windowkeys";
 import { useEscStop } from "../state/escstop";
 import { StopHint } from "./StopHint";
@@ -38,10 +35,10 @@ import { useMachineBooks } from "./machinebooks";
 import { usePaint } from "./paint";
 import { useZoomKeys } from "./zoomkeys";
 import { rememberActivePane, savedActivePane } from "./activepane";
-import { Sidebar } from "./Sidebar";
 import { Sky } from "./Sky";import { useAddWorkspace } from "./addws";
 import { AddWorkspacePrompt } from "./AddWorkspacePrompt";
-import { PaneTabs, usePaneTabs } from "./PaneTabs";
+import type { PaneReport } from "./Pane";
+import { usePaneTabs } from "./PaneTabs";
 import { onShowsSessionTabsChange, showsSessionTabs } from "../state/prefs";
 import { useLiveGrace } from "./useLiveGrace";
 import { useViewed, useUnreadBadge } from "./unread";
@@ -63,6 +60,20 @@ const Settings = lazy(async () => {
   const loaded = await settingsModule;
   if (loaded.error) throw loaded.error;
   return { default: loaded.module!.Settings };
+});
+
+// The chat page is the heaviest thing this window can open, and the tutor is
+// what it opens on. The page's chunk is fetched with the shell — the settings
+// precedent — so the first click is not the network's critical path, while the
+// tutor's first paint parses none of the page's code.
+const chatPageModule = import("./ChatPage").then(
+  (module) => ({ module, error: null as unknown }),
+  (error: unknown) => ({ module: null, error }),
+);
+const ChatPage = lazy(async () => {
+  const loaded = await chatPageModule;
+  if (loaded.error) throw loaded.error;
+  return { default: loaded.module!.ChatPage };
 });
 
 const NO_REPORT: PaneReport = {
@@ -588,163 +599,78 @@ export function App({ hub }: { hub: HubPort }) {
           notice={errorBar}
         />
       ) : (
-      <div className="cols">
-        {navRail.drawn && (
-          <Nav
-            at={settings === false ? null : settings === true ? "" : settings}
-            onGo={showPrefs}
-            onFiles={openFiles}
-            onHome={hidePrefs}
-            onRail={() => setRail((v) => !v)}
-            onFeedback={() => setFeedback(feedbackEntryTab(feedbackUnread))}
-            onTutor={() => setSurface("tutor")}
-            onNew={() => {
-              hidePrefs();
-              void openPane({ root: newSessionRoot }).catch(fail);
-            }}
+        // Same tree, same props, one lazy boundary later: the fallback keeps
+        // the column frame so the page does not jump when the chunk lands.
+        <Suspense fallback={<div className="cols" aria-busy="true" />}>
+          <ChatPage
+            hub={hub}
+            navRail={navRail}
+            settings={settings}
+            showPrefs={showPrefs}
+            hidePrefs={hidePrefs}
+            openFiles={openFiles}
+            openFind={openFind}
+            setRail={setRail}
+            setFeedback={setFeedback}
+            setSurface={setSurface}
+            setClaimed={setClaimed}
+            setBrowser={setBrowser}
             feedbackUnread={feedbackUnread}
-            shown={navRail.shown}
+            newSessionRoot={newSessionRoot}
+            openPane={openPane}
+            openRemotePane={openRemotePane}
+            fail={fail}
+            viewed={viewed}
+            treeRead={treeRead}
+            tree={tree}
+            rail={rail}
+            runtimes={runtimes}
+            runs={runs}
+            active={active}
+            activeWorkspace={activeWorkspace}
+            liveIds={liveIds}
+            listedIds={listedIds}
+            pinnedSessions={pinnedSessions}
+            togglePinnedSession={togglePinnedSession}
+            remotes={remotes}
+            reloadRemotes={reloadRemotes}
+            reloadRemoteTrees={reloadRemoteTrees}
+            readRemoteTree={readRemoteTree}
+            reloadTree={reloadTree}
+            paging={paging}
+            adder={adder}
+            sw={sw}
+            focusPane={focusPane}
+            closePanes={closePanes}
+            panePorts={panePorts}
+            archiveSession={archiveSession}
+            renameSession={renameSession}
+            account={account}
+            accountUnread={accountUnread}
+            report={report}
+            railW={railW}
+            onRailW={onRailW}
+            sessionTabs={sessionTabs}
+            tabs={tabs}
+            manyRoots={manyRoots}
+            dropPanes={dropPanes}
+            onReport={onReport}
+            refreshPanes={refreshPanes}
+            settingsPulse={settingsPulse}
+            findPulse={findPulse}
+            filesRequests={filesRequests}
+            bar={bar}
+            needsProject={needsProject}
+            scheme={scheme}
+            shownDockW={shownDockW}
+            dockLimit={dockLimit}
+            onDockW={onDockW}
+            browser={browser}
+            browserAsk={browserAsk}
+            takeover={takeover}
+            activePaneShown={activePaneShown}
           />
-        )}
-        <Sidebar
-          hub={hub}
-          collapsed={!rail}
-          navShown={navRail.shown}
-          tree={viewed.tree}
-          treeRead={treeRead}
-          runtimes={runtimes}
-          runs={runs}
-          active={active}
-          activeWorkspace={activeWorkspace}
-          liveIds={liveIds}
-          listedIds={listedIds}
-          pinned={pinnedSessions}
-          onPin={togglePinnedSession}
-          remotes={remotes}
-          remoteTrees={viewed.remote}
-          reloadRemotes={reloadRemotes}
-          reloadRemoteTrees={reloadRemoteTrees}
-          readRemoteTree={readRemoteTree}
-          reloadTree={reloadTree}
-          paging={paging}
-          adder={adder}
-          opening={sw.path}
-          onOpen={openPane}
-          onOpenRemote={openRemotePane}
-          onFocusPane={focusPane}
-          onClosePanes={closePanes}
-          onPause={(runtimeId) => void panePorts.get(runtimeId)?.cancel()}
-          onArchive={archiveSession}
-          onRename={renameSession}
-          onCollapse={() => setRail(false)}
-          account={account}
-          accountUnread={accountUnread}
-          wallet={report.wallet}
-          onSettings={showPrefs}
-          onFiles={openFiles}
-          onFeedback={(tab) => setFeedback(tab ?? "send")}
-          onTutor={() => setSurface("tutor")}
-          feedbackUnread={feedbackUnread}
-          onFind={openFind}
-          onError={fail}
-        />
-
-        <div className="main">
-          <Gutter
-            edge="l"
-            span={RAIL}
-            width={railW}
-            label={t("调整工作区栏宽度")}
-            open={rail}
-            onWidth={onRailW}
-            onOpen={setRail}
-          />
-          {/* One conversation on screen at a time. Side by side, two panes
-              squeezed each other and a glance could not tell which composer
-              belonged to which run; the ones behind keep streaming either way. */}
-          {sessionTabs && tabs.length > 1 && (
-            <PaneTabs
-              tabs={tabs}
-              active={active}
-              showRoot={manyRoots}
-              onFocus={focusPane}
-              onClose={dropPanes}
-              onRename={(rt, title, mode) => renameSession(rt.sessionPath ?? "", title, mode)}
-            />
-          )}
-
-          <div className="panes" aria-busy={sw.pending || undefined}>
-            {runtimes.map((rt) => {
-              const port = panePorts.get(rt.id);
-              return port ? (
-                <Pane
-                  key={`${rt.id}:${takeover[rt.id] ?? 0}`}
-                  rt={rt}
-                  port={port}
-                  title={tabs.find((tab) => tab.rt.id === rt.id)?.title ?? t("新会话")}
-                  active={rt.id === active}
-                  sideHost={null}
-                  side={false}
-                  onFocus={() => focusPane(rt.id)}
-                  visible={rt.id === active}
-                  onReport={onReport}
-                  onTurnDone={viewed.turnDone}
-                  // Panes, not just the tree: the first turn gives this pane a
-                  // session path, and until /runtimes reports it the pane still
-                  // looks blank — the next history row would take it over.
-                  onSessionChanged={refreshPanes}
-                  pulse={settingsPulse}
-                  findPulse={findPulse}
-                  filesPulse={filesRequests[rt.id] ?? 0}
-                  alert={rt.id === active ? bar : undefined}
-                  needsProject={needsProject}
-                  onOpenProject={() => {
-                    setRail(true);
-                    adder.add();
-                  }}
-                  onKeepHere={() => {
-                    localStorage.setItem("rx-claim", "off");
-                    setClaimed(true);
-                  }}
-                  onSettings={(section) => section ? showPrefs(section) : showPrefs()}
-                  onOpenSession={(path) => void openPane({ root: rt.root, sessionPath: path }).catch(fail)}
-                  theme={scheme}
-                  dockW={shownDockW}
-                  dockMax={dockLimit}
-                  onDockW={onDockW}
-                  manualBrowser={rt.id === active && browser}
-                  browserAsk={browserAsk}
-                  onManualBrowser={setBrowser}
-                />
-              ) : null;
-            })}
-            {runtimes.length === 0 && (
-              <div className="panes-empty">
-                <span className="mk" aria-hidden="true">
-                  ⌘
-                </span>
-                <p className="t">{t("没有打开的会话")}</p>
-                {/* With no folder there is nowhere a session could open, so the
-                    one button offered is the step that makes it possible. */}
-                {!treeRead ? null : tree.length === 0 ? (
-                  <>
-                    <p className="h">{t("会话在文件夹里打开，先添加一个")}</p>
-                    <button data-action="workspace.add" disabled={adder.busy} onClick={() => adder.add()}>{t("添加文件夹")}</button>
-                  </>
-                ) : (
-                  <>
-                    <p className="h">{t("从左栏选择，或在当前文件夹新建")}</p>
-                    <button data-action="session.new" onClick={() => void openPane({ root: newSessionRoot }).catch(fail)}>{t("新建会话")}</button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          {!activePaneShown && bar}
-        </div>
-
-      </div>
+        </Suspense>
       )}
 
       {adder.pathOpen && <AddWorkspacePrompt busy={adder.busy} onSubmit={adder.addPath} onClose={adder.closePath} />}

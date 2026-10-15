@@ -37,7 +37,14 @@ describe("a reloaded window", () => {
     const kernel = hub();
     const first = render(<App hub={kernel} />);
     const opening = await settled();
-    const other = [...document.querySelectorAll(".sessrow")].find((r) => !r.textContent?.includes(opening));
+    // The chat page sits behind a lazy boundary the shell prefetches; its rows
+    // land a beat after the chrome does, so wait for the page, not the title.
+    const rows = await waitFor(() => {
+      const found = [...document.querySelectorAll(".sessrow")];
+      if (found.length === 0) throw new Error("chat page not loaded yet");
+      return found;
+    });
+    const other = rows.find((r) => !r.textContent?.includes(opening));
     expect(other, "the fixture needs a second session").toBeTruthy();
     await userEvent.click(other!);
     const chosen = await waitFor(() => {
