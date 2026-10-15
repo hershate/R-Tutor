@@ -92,9 +92,22 @@ Checklist 全 ✅，Deep Tutor 语义逐条对位移植。架构与映射决策�
 - 闸门：tsc 0 / vitest 548 文件 4673 用例 / build / census 金样不变 / make
   check+lint clean（repolint 2697 零加宽）
 
+**文档对齐轮（2026-10-15 深夜三，/goal「按实际代码更新全部文档」）**：
+
+- 以翻转后产品形态为纲复核全部 docs/ 43 份 + 根 README±zh 等；改动七份、余下复核无需改
+- README±zh 定位翻转：自学工具为主、Agent 为聊天页；30 秒上手改导师流程
+- STUDIO_PARITY 导师行改"窗口首页"（原"侧栏按钮浮层"已不实）；CLI±zh /tutor 行同口径
+  （TUI 无导师界面，命令只打印位置）
+- GUIDE±zh 加窗口导向段 + web 首跑向导死胡同说明（provider.editing_disabled，seed 绕过）
+- 顺手 GUIDE/CLI 四份补 owner 头（doc-owner 基线 -4，-update 收紧 2697→2693）
+- 复核无需改：TUTOR/SPEC/CONFIG_PATHS/CONTRIBUTING/ROADMAP/MIGRATING/
+  STUDIO_RELEASE/STUDIO_SHELL_BOUNDARIES/desktop±/REASONIX/AGENTS/CLAUDE/
+  SECURITY/USAGE_CATALOG/BILLING
+- 闸门 make check+lint 绿
+
 ## 闸门口径（复核用）
 
-make lint（golangci 0 issues + repolint clean 2697 零加宽）；make check；tutor 全包
+make lint（golangci 0 issues + repolint clean 2693 零加宽）；make check；tutor 全包
 （-race 约 23s）；serve 全量（约 640s）；boot 用 -timeout 25m（本机 AV 慢，默认 10m 会假
 警铃）；前端 tsc + vitest（548 文件）。大套件勿并发跑。
 
