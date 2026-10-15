@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { t } from "../i18n";
 import { host as hostBridge } from "../port/host";
 import type { HubPort } from "../port/hub";
@@ -7,8 +7,20 @@ import { DeviceBar } from "./DeviceBar";
 import { useDismiss } from "./dismiss";
 import { useFolded } from "./usefold";
 import { ariaChord, chord } from "./keys";
-import { PhonePop } from "./PhonePop";
 import { WindowControls, zoomOnTitleBar } from "./WindowControls";
+
+// The phone chip draws only when a share exists to describe, and its popup is
+// rarer still. The chunk rides along with the shell — the settings precedent —
+// so the chip's appearance never waits on the network.
+const phonePopModule = import("./PhonePop").then(
+  (module) => ({ module, error: null as unknown }),
+  (error: unknown) => ({ module: null, error }),
+);
+const PhonePop = lazy(async () => {
+  const loaded = await phonePopModule;
+  if (loaded.error) throw loaded.error;
+  return { default: loaded.module!.PhonePop };
+});
 
 const base = (p: string) => p.replace(/[/\\]+$/, "").split(/[/\\]/).pop() || p;
 // The filename is a timestamp and a model ref — true, and useless to read. The
@@ -119,7 +131,11 @@ export function Chrome({ port, status, title, steer, onSettings, onBrowser, brow
           </button>
         )}
         <div className="r-fold" id="chrome-fold" data-open={more ? "" : undefined}>
-        {hub && onError && <PhonePop hub={hub} />}
+        {hub && onError && (
+          <Suspense fallback={null}>
+            <PhonePop hub={hub} />
+          </Suspense>
+        )}
         {port && (
           <button
             className="thbtn find-action"

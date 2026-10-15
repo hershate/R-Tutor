@@ -42,12 +42,33 @@ import { usePaneTabs } from "./PaneTabs";
 import { onShowsSessionTabsChange, showsSessionTabs } from "../state/prefs";
 import { useLiveGrace } from "./useLiveGrace";
 import { useViewed, useUnreadBadge } from "./unread";
-import { Onboarding } from "./Onboarding";
-import { Welcome } from "./Welcome";
 import { useSessionSwitch } from "./sessionswitch";
 import { singleFlight } from "./singleflight";
 import { useOpenPane } from "./useOpenPane";
 import { markSettled } from "../boot/gate";
+
+// Onboarding and welcome play once per machine and never again; their chunks
+// ride with the shell anyway — the settings precedent — so a first run draws
+// them as soon as the kernel has answered, and every later window parses
+// neither. The fallback is the idle frame the gates already draw.
+const onboardingModule = import("./Onboarding").then(
+  (module) => ({ module, error: null as unknown }),
+  (error: unknown) => ({ module: null, error }),
+);
+const Onboarding = lazy(async () => {
+  const loaded = await onboardingModule;
+  if (loaded.error) throw loaded.error;
+  return { default: loaded.module!.Onboarding };
+});
+const welcomeModule = import("./Welcome").then(
+  (module) => ({ module, error: null as unknown }),
+  (error: unknown) => ({ module: null, error }),
+);
+const Welcome = lazy(async () => {
+  const loaded = await welcomeModule;
+  if (loaded.error) throw loaded.error;
+  return { default: loaded.module!.Welcome };
+});
 
 // Start fetching the settings chunk with the shell instead of waiting for the
 // first click. It remains a separate chunk (and keeps its failure boundary),
@@ -523,30 +544,34 @@ export function App({ hub }: { hub: HubPort }) {
   if (setup === undefined || welcomed === undefined) return <div className="app" data-run="idle" />;
   if (setup?.required && activePort) {
     return (
-      <Onboarding
-        port={activePort}
-        setup={setup}
-        onDone={() => {
-          setSetup(null);
-          if (!welcomed) {
-            setWelcomed(true);
-            void activePort.markWelcomed().catch(() => {});
-          }
-          void reloadPanes();
-        }}
-      />
+      <Suspense fallback={<div className="app" data-run="idle" />}>
+        <Onboarding
+          port={activePort}
+          setup={setup}
+          onDone={() => {
+            setSetup(null);
+            if (!welcomed) {
+              setWelcomed(true);
+              void activePort.markWelcomed().catch(() => {});
+            }
+            void reloadPanes();
+          }}
+        />
+      </Suspense>
     );
   }
   if (!welcomed && activePort) {
     return (
-      <Welcome
-        variant="short"
-        replay
-        onDone={() => {
-          setWelcomed(true);
-          void activePort.markWelcomed().catch(() => {});
-        }}
-      />
+      <Suspense fallback={<div className="app" data-run="idle" />}>
+        <Welcome
+          variant="short"
+          replay
+          onDone={() => {
+            setWelcomed(true);
+            void activePort.markWelcomed().catch(() => {});
+          }}
+        />
+      </Suspense>
     );
   }
 

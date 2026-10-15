@@ -1,12 +1,32 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { t } from "../i18n";
 import { reason } from "../i18n/kernel";
 import type { AgentPort } from "../port/port";
 import { useEscape } from "./dismiss";
 import { listenAction } from "./listen";
-import { FeedbackForm } from "./FeedbackForm";
-import { FeedbackMine } from "./FeedbackMine";
 import { StudioIcon } from "./StudioIcon";
+
+// The dialog's frame is cheap; its two bodies are the expensive part and open
+// only from the feedback control. Both chunks are fetched with the shell —
+// the settings precedent — so opening a tab is never the network's turn.
+const feedbackFormModule = import("./FeedbackForm").then(
+  (module) => ({ module, error: null as unknown }),
+  (error: unknown) => ({ module: null, error }),
+);
+const FeedbackForm = lazy(async () => {
+  const loaded = await feedbackFormModule;
+  if (loaded.error) throw loaded.error;
+  return { default: loaded.module!.FeedbackForm };
+});
+const feedbackMineModule = import("./FeedbackMine").then(
+  (module) => ({ module, error: null as unknown }),
+  (error: unknown) => ({ module: null, error }),
+);
+const FeedbackMine = lazy(async () => {
+  const loaded = await feedbackMineModule;
+  if (loaded.error) throw loaded.error;
+  return { default: loaded.module!.FeedbackMine };
+});
 
 export type FeedbackTab = "send" | "mine";
 
@@ -116,11 +136,15 @@ export function Feedback({ port, tab: first = "send", onClose, onError, onUnread
         </div>
         <div className="fbk-body">
           <div id="fbk-panel-send" role="tabpanel" aria-labelledby="fbk-tab-send" hidden={tab !== "send"}>
-            <FeedbackForm port={port} onMine={() => setTab("mine")} onClose={onClose} onFile={openLink} onConceal={setConcealed} />
+            <Suspense fallback={null}>
+              <FeedbackForm port={port} onMine={() => setTab("mine")} onClose={onClose} onFile={openLink} onConceal={setConcealed} />
+            </Suspense>
           </div>
           {tab === "mine" && (
             <div id="fbk-panel-mine" role="tabpanel" aria-labelledby="fbk-tab-mine">
-              <FeedbackMine port={port} onFile={openLink} onUnread={onUnread} />
+              <Suspense fallback={null}>
+                <FeedbackMine port={port} onFile={openLink} onUnread={onUnread} />
+              </Suspense>
             </div>
           )}
         </div>
