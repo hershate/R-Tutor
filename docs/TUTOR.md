@@ -56,7 +56,8 @@ Three standing rules:
    Markdown, plain text). A PDF without an embedded text layer refuses with
    `tutor.no_raw_text`; printing pages to text first is the supported path.
 3. `POST /tutor/sessions/{id}/materials/{mid}/confirm` confirms the
-   material, taking an optional `parse_mode` that parses it in the same step;
+   material, taking an optional `parse_mode` — `full`, `fast`, or `none` to
+   keep the original unparsed — that parses it in the same step;
    `.../parse` extracts the text on demand.
 4. `POST /tutor/sessions/{id}/generate` streams the pipeline as SSE events:
    `tool_start`/`tool_end` per tool, `unit_start`/`unit_done`/`plan_chunk` as

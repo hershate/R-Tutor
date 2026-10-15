@@ -67,9 +67,34 @@ Checklist 全 ✅，Deep Tutor 语义逐条对位移植。架构与映射决策�
   （HEAD 上 actions.test.ts 即红）
 - 验证：tsc 0、vitest 548 文件/4667 用例全绿、build、census:verify 金样不变
 
+**前端全覆盖对账轮（2026-10-15 深夜续，route↔port↔UI 三张对账表 + 实机复验）**：
+
+- feat(studio) 7c8fea744：对账后补齐的 UI——资料暂存行（文件行逐份解析模式
+  full/fast/none、URL 行随目标发送、可移除）、首页学习数据卡（十二周热力图 +
+  分方案进度米条）、复习总览（今日到期/错题总数/按方案错题直达该方案测验页）、
+  测验统计与错题重练判分；actions.ts 补 mat-*/wrong-* 注册，EN 全量
+- fix(studio) c86775b2f：内核 tutor DELETE 全 204 无体，端口层 del0 的 res.json()
+  空体解析抛错——服务端已删、UI 报错行不消（实测发现；空体 settle undefined +
+  2 单测，插件卸载的 JSON 形态保留）
+- fix(studio) f201c9154：Tutor.css 幻影 token——--line/--ink/--ink-dim/
+  --accent-soft/--bad/--good 无一定义，边框落 currentColor、热力图空格透明、
+  原生输入框 UA 白底成"深色页面上的洞"（实测截图发现）→ 真词汇（--border/
+  --text/--muted/--accent-wash + 文字用 *-ink）+ 字段配方（--raised/--text/
+  --focus，:where 保页面覆盖力）
+- 验证方法：mock OpenAI SSE（8199）+ config.toml 种子 provider + REASONIX_HOME
+  隔离 + headless Edge CDP 17 检查零控制台异常 + 截图视觉复核（探针
+  note/probe/cdp-ui-tour.mjs；目标页先 about:blank 再导航，防旧包缓存竞速）
+- 发现未改（设计如此）：`reasonix web` 首跑向导是死胡同——Onboarding 走 grants
+  门控的 /providers/*，仅桌面 host 调 AllowProviderEdit；web 循环回环只开
+  /provider-setup 而 Onboarding 不调。安全取舍不动；web 首跑 seed config.toml
+- IAB（ZCode 内置浏览器）宿主 rAF 不触发、Web Animations 冻结于 0，intro 的
+  arrive() 永不完成，本应用验证不可用；headless Edge CDP 替代
+- 闸门：tsc 0 / vitest 548 文件 4673 用例 / build / census 金样不变 / make
+  check+lint clean（repolint 2697 零加宽）
+
 ## 闸门口径（复核用）
 
-make lint（golangci 0 issues + repolint clean 2698 零加宽）；make check；tutor 全包
+make lint（golangci 0 issues + repolint clean 2697 零加宽）；make check；tutor 全包
 （-race 约 23s）；serve 全量（约 640s）；boot 用 -timeout 25m（本机 AV 慢，默认 10m 会假
 警铃）；前端 tsc + vitest（548 文件）。大套件勿并发跑。
 

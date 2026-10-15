@@ -245,7 +245,7 @@ type Material struct {
 	SessionID string            `json:"session_id"`
 	Kind      MaterialKind      `json:"kind"`
 	Source    string            `json:"source"`               // filename, URL, or "text"
-	ParseMode string            `json:"parse_mode,omitempty"` // full | fast
+	ParseMode string            `json:"parse_mode,omitempty"` // full | fast | none
 	Status    string            `json:"status"`               // pending | confirmed | parsed
 	Chars     int               `json:"chars,omitempty"`
 	Error     string            `json:"error,omitempty"`
