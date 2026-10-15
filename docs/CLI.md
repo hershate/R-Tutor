@@ -612,6 +612,7 @@ the displayed list matches the commands the TUI accepts.
 | `/theme [auto\|light\|dark\|style]` | View or change the CLI background mode and accent palette. |
 | `/currency [auto\|CNY\|USD]` | View or change the user-global fee display currency and refresh the runtime. |
 | `/paste-image` | Read a clipboard image and insert an editable attachment token. |
+| `/tutor` | Point at the Study Tutor surface: Studio's rail or command palette opens it, and `reasonix web` serves it in the browser (`#tutor` in the address opens it directly). |
 | `/mouse` | Toggle in-app mouse selection, scrollbar, and wheel handling. |
 | `/effort` | View or change reasoning effort. |
 | `/output-style` | Select an answer style. |

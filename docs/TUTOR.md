@@ -2,7 +2,7 @@
 owner: @SivanCola
 backup: @esengine
 status: active
-reviewed: 2026-10-14
+reviewed: 2026-10-15
 ---
 
 # Tutor
@@ -14,7 +14,17 @@ plan, then keeps the studying going: scheduled units, quizzes with a
 wrong-answer deck, spaced review, notes, and a searchable knowledge base.
 
 It is the Study Tutor surface in Studio (rail button, 学习导师) and an HTTP
-namespace (`/tutor/*`) on the same loopback server every frontend uses.
+namespace (`/tutor/*`) on the same loopback server every frontend uses. There
+is no separate tutor web application:
+
+- The Studio sheet is the interface, and the same SPA serves `reasonix web`;
+  appending `#tutor` to its address opens the sheet directly.
+- The Studio rail, the sidebar, and the command palette all carry the entry;
+  in the terminal, `/tutor` prints where the surface lives.
+- The only other HTML the namespace emits are download artifacts (exports)
+  and the read-only public share page.
+
+Three standing rules:
 
 1. The model is the chat model configured for new conversations, resolved per
    run, so a settings change applies to the next generation.
@@ -53,19 +63,21 @@ namespace (`/tutor/*`) on the same loopback server every frontend uses.
    /tutor/sessions/{id}/clarify` sends them and the paused run resumes with
    the answers applied; a session with no pending clarification refuses
    `tutor.no_clarification`.
-6. The pipeline runs seven tools — parse material, understand intent, build
-   knowledge map, design stages, search resources and schedule plan (in
-   parallel), validate, export. A failed validation check reruns the tool
-   that owns it, at most two feedback rounds.
+6. The pipeline runs eight tools — parse material, understand intent, build
+   knowledge map, design stages, search resources and schedule plan (those
+   two concurrently), validate, export. A failed validation check reruns the
+   tool that owns it, at most two feedback rounds.
 7. A saved plan is versioned. `POST /tutor/plans/{pid}/regenerate` makes the
    next version; the quota is two regenerations per plan, then
    `tutor.regen_quota` refuses.
 8. `POST /tutor/sessions/{id}/cancel` cancels a running generation;
    `.../retry` reruns a failed or interrupted one from its saved run state.
 
-Web search during generation is optional: set `TUTOR_SEARCH_ENGINE` (with
-`BING_API_KEY` when the engine needs one) or rely on the conversation
-provider's search configuration.
+Web search during generation is optional and rides Reasonix's unified
+scheme: the `agent.web_search_model` selection in Model preferences, its
+credentials from the shared credential store. The tutor adds SSRF-guarded
+verification and a mandatory AI relevance gate; the search spend is
+metered into the daily budget.
 
 ## Studying
 
@@ -75,7 +87,7 @@ provider's search configuration.
 | Versions | `GET /tutor/plans/{pid}/versions[/{v}]` | Every saved version, readable side by side |
 | Quizzes | `POST /tutor/plans/{pid}/quiz`, `POST /tutor/quizzes/{qid}/submit` | Fresh quiz sets; grading records every attempt |
 | Wrong-answer deck | `GET /tutor/plans/{pid}/quiz/wrong`, `GET /tutor/quizzes/wrong-queue`, `.../wrong-overview` | Questions answered wrong, plan by plan |
-| Progress | `GET+POST /tutor/progress`, `GET+POST /tutor/progress/logs` | Unit completions and free-form study logs |
+| Progress | `POST /tutor/progress` (read per plan at `GET /tutor/plans/{pid}/progress`), `GET+POST /tutor/progress/logs` | Unit completions and free-form study logs |
 | Review | `GET /tutor/progress/review/queue`, `.../due` | Spaced-review queue with per-unit mastery |
 | Statistics | `GET /tutor/progress/stats/summary|by-plan|calendar` | Study-time rollups |
 | Units | per plan | Self-study units grouped from the plan's knowledge map; `materials-index.md` renders the roadmap |
@@ -105,9 +117,9 @@ rises with completed units and quiz scores.
 
 ## Search
 
-`GET /tutor/search?q=` (`&limit=`) searches notes and knowledge-base text
-and returns snippets with per-hit kinds. It is the same index the Studio
-search view reads.
+`GET /tutor/search?q=` (`&limit=`) searches plans, knowledge-map nodes,
+notes, and knowledge-base text, and returns snippets with per-hit kinds. It
+is the same index the Studio search view reads.
 
 ## Exports
 
