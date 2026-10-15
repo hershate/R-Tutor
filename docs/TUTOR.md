@@ -147,7 +147,7 @@ and class or theme values collapse to single safe tokens.
 
 | Action | Route | Behavior |
 | --- | --- | --- |
-| Export | `GET /tutor/backup/export` | One zip of the whole tutor store, answers included |
+| Export | `GET /tutor/backup/export` | One JSON file holding the whole tutor store, answers included |
 | Preview | `POST /tutor/backup/preview` | Counts what an import would add; writes nothing |
 | Import | `POST /tutor/backup/import` | Appends with fresh IDs; knowledge-base documents deduplicate by content; the note quota applies |
 
@@ -190,4 +190,5 @@ Preview and import take a base64 JSON envelope (`content_base64`), capped at
 | `tutor.kb_no_original` | 400 | The document's original bytes are gone |
 | `tutor.kb_bad_input` | 400 | Empty, oversized, or wrong-kind knowledge-base input |
 | `tutor.kb_no_docs` | 400 | The knowledge base has no usable documents yet |
+| `tutor.kb_export_empty` | 400 | A library export selected no documents (empty library or filter) |
 | `tutor.disabled` | 503 | The tutor store is unavailable |
