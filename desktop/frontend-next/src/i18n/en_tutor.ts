@@ -142,6 +142,7 @@ export const EN_TUTOR: Record<string, string> = {
   "错题对 {n}": "{n} quizzes right",
   "重练薄弱（{n} 项）": "Drill the weak ones ({n})",
   "再复习一次": "Another round",
+  "再取一次最新数据": "Reload the latest",
   "先在心里回忆这个知识点，再点卡片翻面。": "Recall this point in your head first, then flip the card.",
   "（这条还没有笔记）": "(no note on this one yet)",
   "诚实回忆后再翻面评分，效果最好。": "Rating an honest recall works best.",

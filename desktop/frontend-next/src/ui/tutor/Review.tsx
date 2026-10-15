@@ -187,6 +187,7 @@ export function Review({ port, onGo, onError }: Props) {
         ) : (
           <>
             <p className="tut-dim">{totalAll === 0 ? t("现在没有到期的知识点，也没有错题。") : t("这一类已经复习完。")}</p>
+            <button type="button" data-action="tutor.review-refresh" onClick={load}>{t("再取一次最新数据")}</button>
             <button type="button" data-action="tutor.review-home" onClick={() => onGo({ k: "home" })}>{t("返回首页")}</button>
           </>
         )}
