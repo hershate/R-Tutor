@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "./testkit";
 import { App } from "./App";
@@ -68,15 +68,20 @@ describe("the study tutor surface", () => {
     expect(screen.queryByRole("navigation", { name: "学习导航" })).toBeNull();
   });
 
-  it("opens the chat surface from the command palette's tutor row", async () => {
+  it("focuses the tutor pane from the command palette's row, with chat still mounted", async () => {
     render(<App hub={hub()} />);
     await screen.findByRole("navigation", { name: "学习导航" });
     fireEvent.click(screen.getByRole("button", { name: "聊天" }));
     await screen.findByRole("button", { name: "发送反馈" });
     await userEvent.keyboard("{Control>}k{/Control}");
     await userEvent.keyboard("导师");
-    await userEvent.click(await screen.findByText("学习导师"));
+    // The pane keeps its own heading; the palette row is the one to pick.
+    const palette = screen.getByRole("dialog", { name: "搜索与快捷操作" });
+    fireEvent.click(within(palette).getByText("学习导师"));
+    // The tutor's pane takes the window back; the chat pane stays mounted
+    // behind it rather than being torn down for a surface swap.
     expect(await screen.findByRole("navigation", { name: "学习导航" })).toBeTruthy();
+    expect(screen.getByLabelText("Reasonix Studio")).toBeTruthy();
   });
 
   it("carries the rail button's click to the host unchanged", () => {
@@ -118,7 +123,13 @@ describe("the study tutor surface", () => {
     tp.tutorPlans = vi.fn(async () => [plan]);
     render(<App hub={h} />);
     expect(await screen.findByRole("navigation", { name: "学习导航" })).toBeTruthy();
-    expect(await screen.findByRole("button", { name: /端口区分的方案/ })).toBeTruthy();
+    // The plan lands twice in the one window — a run row in the session rail
+    // beside chat sessions, and its row in the tutor pane's own list — and
+    // both are drawn through the baseless tutor port. The two reads settle
+    // at different ticks, so wait for the pair before pinning the ports.
+    await waitFor(() => {
+      expect(screen.getAllByRole("button", { name: /端口区分的方案/ }).length).toBe(2);
+    });
     await waitFor(() => {
       expect(tp.tutorPlans).toHaveBeenCalled();
       expect(mp.tutorPlans).not.toHaveBeenCalled();

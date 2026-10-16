@@ -21,5 +21,9 @@ if (typeof window !== "undefined" && !window.matchMedia) {
 if (typeof window !== "undefined") {
   beforeEach(() => {
     window.location.hash = "#chat";
+    // Each test is a fresh window: the pane the last test was looking at must
+    // not decide which pane this one opens on. Real windows keep theirs —
+    // tests share one sessionStorage.
+    try { sessionStorage.removeItem("rx-active-pane"); } catch { /* refused: next load falls back */ }
   });
 }

@@ -167,9 +167,17 @@ describe("a pane's view", () => {
     expect(onManualBrowser).toHaveBeenLastCalledWith(true);
     expect(document.querySelector(".workbench-body")?.hasAttribute("data-files")).toBe(true);
     onManualBrowser.mockClear();
-    view.rerender(<Pane key="p1:1" {...all} filesPulse={1} />);
+    // A takeover rebinds the pane: the window zeroes its request counter for
+    // the fresh mount, and the request the old pane already answered is not
+    // replayed.
+    view.rerender(<Pane key="p1:1" {...all} filesPulse={0} />);
     expect(onManualBrowser).not.toHaveBeenCalled();
     expect(document.querySelector(".workbench-body")?.hasAttribute("data-files")).toBe(false);
+    // A count that arrives after the mount is the earliest request, not
+    // noise: the fresh pane answers it.
+    view.rerender(<Pane key="p1:1" {...all} filesPulse={1} />);
+    expect(onManualBrowser).toHaveBeenLastCalledWith(true);
+    expect(document.querySelector(".workbench-body")?.hasAttribute("data-files")).toBe(true);
   });
 
 });

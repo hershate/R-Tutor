@@ -58,17 +58,22 @@ describe("opt-in session tabs", () => {
     draw(await hub());
     await settled();
     await userEvent.click(toggle());
-    await waitFor(() => expect(strip()?.querySelectorAll('[role="tab"]').length).toBe(2));
+    // The pinned Study tab rides first, so two conversations read three tabs.
+    await waitFor(() => expect(strip()?.querySelectorAll('[role="tab"]').length).toBe(3));
     await userEvent.click(toggle());
     expect(strip()).toBeNull();
   });
 
-  it("does not show a strip for a single session, even when enabled", async () => {
+  it("shows a strip for a single session once enabled: the pinned study tab rides first", async () => {
     draw(await hub(1));
     await settled();
     await userEvent.click(toggle());
     expect(toggle().getAttribute("aria-checked")).toBe("true");
-    expect(strip()).toBeNull();
+    // The strip is no longer two-conversations-or-nothing: the tutor is a
+    // pinned first tab, so one conversation joining it already makes a pair.
+    const tabs = strip()?.querySelectorAll('[role="tab"]');
+    expect(tabs?.length).toBe(2);
+    expect(tabs?.[0]?.textContent).toContain("学习");
   });
 
   it("retains both enabled and disabled choices when the interface remounts", async () => {
@@ -81,7 +86,7 @@ describe("opt-in session tabs", () => {
     const second = draw(kernel);
     await settled();
     expect(toggle().getAttribute("aria-checked")).toBe("true");
-    expect(strip()?.querySelectorAll('[role="tab"]').length).toBe(2);
+    expect(strip()?.querySelectorAll('[role="tab"]').length).toBe(3);
     await userEvent.click(toggle());
     second.unmount();
 

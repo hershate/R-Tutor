@@ -287,10 +287,10 @@ describe("pane tabs carry the mark", () => {
     const k = kernel([]);
     render(<App hub={k.hub} />);
     await userEvent.click(await row(/Release notes/));
-    await waitFor(() => expect(document.querySelectorAll(".ptab").length).toBe(2));
+    await waitFor(() => expect(document.querySelectorAll(".ptab").length).toBe(3)); // the pinned Study tab rides first
     k.unread.add(MAIN);
     await userEvent.click(await row(/Docs sweep/));
-    await waitFor(() => expect(document.querySelectorAll(".ptab").length).toBe(3));
+    await waitFor(() => expect(document.querySelectorAll(".ptab").length).toBe(4));
     const tabs = screen.getAllByRole("tab");
     await waitFor(() => expect(tabs.some((tab) => within(tab).queryByRole("img", { name: "未读" }))).toBe(true));
     const active = tabs.find((tab) => tab.getAttribute("aria-selected") === "true")!;
@@ -302,14 +302,14 @@ describe("pane tabs carry the mark", () => {
     render(<App hub={k.hub} />);
     await userEvent.click(await row(/Release notes/));
     await userEvent.click(await row(/Docs sweep/));
-    await waitFor(() => expect(document.querySelectorAll(".ptab").length).toBe(3));
+    await waitFor(() => expect(document.querySelectorAll(".ptab").length).toBe(4));
     k.unread.add(RELEASE);
     await act(async () => {
       await userEvent.click(screen.getAllByRole("tab")[0]);
       await userEvent.click(screen.getAllByRole("tab")[1]);
     });
     await waitFor(() => expect(k.port(RELEASE).markSessionViewed).toHaveBeenCalled());
-    const release = screen.getAllByRole("tab")[1];
+    const release = screen.getAllByRole("tab")[1]; // after the pinned Study tab
     expect(within(release).queryByRole("img", { name: "未读" })).toBeNull();
   });
 });
