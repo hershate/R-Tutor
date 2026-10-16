@@ -554,6 +554,7 @@ const SAID: Record<string, string> = {
   "tutor.kb_no_original": "该文档没有原件（文本/网页类创建时已解析入库）",
   "tutor.kb_bad_input": "知识库输入为空或超出上限",
   "tutor.kb_no_docs": "知识库还没有可用的已解析文档，请先上传并解析",
+  "tutor.kb_export_empty": "导出没有选中任何文档（知识库为空或都被筛掉了）",
   "tutor.kb_parse_failed": "文档解析失败，可换解析档位重试",
   "tutor.upstream_timeout": "模型响应超时，请稍后重试",
   "tutor.bad_backup": "备份文件不是有效的 Reasonix 导师备份",

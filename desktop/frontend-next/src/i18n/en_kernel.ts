@@ -457,6 +457,7 @@ export const EN_KERNEL: Record<string, string> = {
   "该文档没有原件（文本/网页类创建时已解析入库）": "This document has no original (text and web documents are parsed when filed)",
   "知识库输入为空或超出上限": "The knowledge base input is empty or over its cap",
   "知识库还没有可用的已解析文档，请先上传并解析": "The knowledge base has no parsed documents yet; upload and parse some first",
+  "导出没有选中任何文档（知识库为空或都被筛掉了）": "The export selected no documents (the library is empty or everything was filtered out)",
   "文档解析失败，可换解析档位重试": "Parsing failed; retry with the other parse mode",
   "模型响应超时，请稍后重试": "The model response timed out; retry shortly",
   "备份文件不是有效的 Reasonix 导师备份": "The file is not a valid Reasonix tutor backup",
