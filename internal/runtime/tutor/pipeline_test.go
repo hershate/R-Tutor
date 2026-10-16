@@ -186,11 +186,11 @@ func TestPipelineClarifyPauseAndForcedAdvance(t *testing.T) {
 		t.Fatalf("paused run must not emit done")
 	}
 
-	// Continuation: the model stays conservative (still needs_clarify), the
-	// deterministic guard must force the pipeline forward anyway.
+	// Continuation: the model stays conservative (still needs_clarify); the
+	// guard must force the pipeline forward anyway. Answers ride RunInput's
+	// own field alone — the production shape, never copied into TimeFields.
 	cont := r.Run(context.Background(), RunInput{
 		Session: sess, RawText: "学 React", Answers: []string{"零基础"},
-		TimeFields:      IntentArgs{Answers: []string{"零基础"}},
 		InitialUpstream: res.Outputs,
 	}, collect(&events))
 	if cont.Status != StatusDone {

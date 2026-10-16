@@ -219,7 +219,12 @@ func (r *Runner) execUnderstandIntent(ctx context.Context, in RunInput, attempt 
 	if err != nil {
 		return errorOutput(ToolUnderstandIntent, err, meta)
 	}
-	ValidateIntent(&value, in.TimeFields, time.Now())
+	// The clarify-continuation guard reads Answers, which ride RunInput's own
+	// field, not TimeFields. Without the copy, an answered round whose
+	// extraction still says needs_clarify would re-ask the same question.
+	args := in.TimeFields
+	args.Answers = in.Answers
+	ValidateIntent(&value, args, time.Now())
 	if degraded != "" {
 		return degradedOutput(value, degraded, meta)
 	}
