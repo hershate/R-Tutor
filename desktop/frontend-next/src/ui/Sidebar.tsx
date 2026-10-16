@@ -8,6 +8,7 @@ import type { HubPort, RuntimeView, TreeWorkspace } from "../port/hub";
 import type { RemoteHost } from "../port/remote";
 import type { Adder } from "./addws";
 import type { TutorPlanSummary } from "../port/tutor";
+import { TUTOR_NAV, type TutorView } from "./tutor/Tutor";
 import { AccountRow } from "./AccountRow";
 import { RailSearch } from "./railsearch";
 import { RemoteHosts } from "./RemoteHosts";
@@ -65,6 +66,10 @@ interface Props {
   onFeedback: (tab?: "send" | "mine") => void;
   /** Focuses the tutor's pinned pane. */
   onTutor: () => void;
+  /** The page the study pane is on, so the rail's study entries can mark it. */
+  tutorView?: TutorView;
+  /** Takes the study pane to one of its pages — the pane's own navigation. */
+  onTutorNav?: (view: TutorView) => void;
   /** The tutor's plans — the runs a generation produced — listed beside chat
    *  sessions so both halves of the window read from one column. */
   tutorPlans?: TutorPlanSummary[];
@@ -117,6 +122,8 @@ export function Sidebar({
   onFiles,
   onFeedback,
   onTutor,
+  tutorView,
+  onTutorNav,
   tutorPlans = [],
   onOpenTutorPlan,
   feedbackUnread,
@@ -271,17 +278,23 @@ export function Sidebar({
             <button data-action="settings.section" data-value="remote" onClick={() => onSettings("remote")}><span aria-hidden="true"><StudioIcon name="server" /></span><b>{t("运行环境")}</b><small>Local / SSH</small></button>
           </div>
         )}
-        <div className="studio-section-label studio-session-label"><span>{t("会话")}</span></div>
-        <div className="studio-session-filters" role="group" aria-label={t("会话范围")}>
-          <div className="studio-session-segments">
-            <button data-action="session.filter" data-value="all" aria-pressed={railScope === "all"} onClick={() => setRailScope("all")}><span>{t("全部")}</span>{sessionCount > 0 && <b>{sessionCount}</b>}</button>
-            <button data-action="session.filter" data-value="live" aria-pressed={railScope === "live"} onClick={() => setRailScope("live")}><span>{t("进行中")}</span>{liveCount > 0 && <b>{liveCount}</b>}</button>
-            <button data-action="session.filter" data-value="pinned" aria-pressed={railScope === "pinned"} onClick={() => setRailScope("pinned")}><span>{t("置顶")}</span>{pinned.size > 0 && <b>{pinned.size}</b>}</button>
-            <button data-action="session.filter" data-value="archived" aria-pressed={railScope === "archived"} onClick={() => setRailScope("archived")}><span>{t("归档")}</span>{archivedCount > 0 && <b>{archivedCount}</b>}</button>
-          </div>
-          <button className="studio-filter-search" data-action="workspace.search" ref={magnifier} onClick={toggleFind} aria-label={t("按名称筛选会话")}><StudioIcon name="search" /></button>
-        </div>
-      </div>
+      {onTutorNav && (
+        <nav className="studio-tutor-runs studio-tutor-pages" aria-label={t("学习导航")}>
+          <div className="studio-section-label studio-tutor-label"><span>{t("学习")}</span></div>
+          {TUTOR_NAV.map((n) => (
+            <button
+              key={n.key}
+              className="studio-tutor-run"
+              data-action="tutor.nav"
+              data-value={n.key}
+              aria-current={tutorView && (tutorView.k === n.key || (n.key === "plans" && (tutorView.k === "plan" || tutorView.k === "learn"))) ? "page" : undefined}
+              onClick={() => onTutorNav(n.view)}
+            >
+              <span className="studio-tutor-run-t">{n.label()}</span>
+            </button>
+          ))}
+        </nav>
+      )}
       {tutorPlans.length > 0 && onOpenTutorPlan && (
         <div className="studio-tutor-runs">
           <div className="studio-section-label studio-tutor-label"><span>{t("学习方案")}</span></div>
@@ -299,6 +312,17 @@ export function Sidebar({
           ))}
         </div>
       )}
+        <div className="studio-section-label studio-session-label"><span>{t("会话")}</span></div>
+        <div className="studio-session-filters" role="group" aria-label={t("会话范围")}>
+          <div className="studio-session-segments">
+            <button data-action="session.filter" data-value="all" aria-pressed={railScope === "all"} onClick={() => setRailScope("all")}><span>{t("全部")}</span>{sessionCount > 0 && <b>{sessionCount}</b>}</button>
+            <button data-action="session.filter" data-value="live" aria-pressed={railScope === "live"} onClick={() => setRailScope("live")}><span>{t("进行中")}</span>{liveCount > 0 && <b>{liveCount}</b>}</button>
+            <button data-action="session.filter" data-value="pinned" aria-pressed={railScope === "pinned"} onClick={() => setRailScope("pinned")}><span>{t("置顶")}</span>{pinned.size > 0 && <b>{pinned.size}</b>}</button>
+            <button data-action="session.filter" data-value="archived" aria-pressed={railScope === "archived"} onClick={() => setRailScope("archived")}><span>{t("归档")}</span>{archivedCount > 0 && <b>{archivedCount}</b>}</button>
+          </div>
+          <button className="studio-filter-search" data-action="workspace.search" ref={magnifier} onClick={toggleFind} aria-label={t("按名称筛选会话")}><StudioIcon name="search" /></button>
+        </div>
+      </div>
       <RailSearch>
       <Workspaces
         hub={hub}

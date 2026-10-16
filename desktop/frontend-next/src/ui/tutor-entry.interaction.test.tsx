@@ -49,12 +49,13 @@ function hub() {
 // on, and the agent chat — Reasonix's full surface — is a page within it.
 // These tests pin the hand-offs between the two.
 describe("the study tutor surface", () => {
-  it("opens on the tutor by default, with no agent navigation on screen", async () => {
+  it("opens on the study pane by default, its pages already in the rail", async () => {
     render(<App hub={hub()} />);
+    // The session rail carries the study pane's pages beside chat sessions —
+    // one column for both halves of the window.
     expect(await screen.findByRole("navigation", { name: "学习导航" })).toBeTruthy();
-    // The chat surface's rail and its entries are not merely hidden behind
-    // the tutor; they are not drawn at all.
-    expect(screen.queryByRole("navigation", { name: "主导航" })).toBeNull();
+    // No conversation is open, so the chat side of the window has nothing to
+    // offer yet.
     expect(screen.queryByRole("button", { name: "新建会话" })).toBeNull();
   });
 
@@ -62,10 +63,12 @@ describe("the study tutor surface", () => {
     render(<App hub={hub()} />);
     await screen.findByRole("navigation", { name: "学习导航" });
     fireEvent.click(screen.getByRole("button", { name: "聊天" }));
-    // The chat surface is the workspace column: its brand marks it, and the
-    // tutor's navigation leaves the screen with it.
+    // The conversation pane takes the window; the study pane stays mounted
+    // behind it rather than being torn down for a surface swap.
     expect(await screen.findByLabelText("Reasonix Studio")).toBeTruthy();
-    expect(screen.queryByRole("navigation", { name: "学习导航" })).toBeNull();
+    expect(await screen.findByRole("button", { name: "发送反馈" })).toBeTruthy();
+    expect(document.querySelector(".pane-tutor")?.getAttribute("aria-hidden")).toBe("true");
+    expect(!!document.querySelector(".panes > .pane[data-active]")).toBe(true);
   });
 
   it("focuses the tutor pane from the command palette's row, with chat still mounted", async () => {
@@ -104,7 +107,9 @@ describe("the study tutor surface", () => {
     window.location.hash = "#chat";
     render(<App hub={hub()} />);
     expect(await screen.findByLabelText("Reasonix Studio")).toBeTruthy();
-    expect(screen.queryByRole("navigation", { name: "学习导航" })).toBeNull();
+    // A hand-off that names chat still leaves the study pane mounted in the
+    // one window; it is simply not the pane in front.
+    expect(document.querySelector(".pane-tutor")?.getAttribute("aria-hidden")).toBe("true");
     expect(window.location.hash).toBe("");
   });
 

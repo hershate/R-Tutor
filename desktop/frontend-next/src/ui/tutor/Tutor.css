@@ -25,6 +25,9 @@
 }
 .studio-tutor-run:hover { color: var(--text); background: var(--overlay); }
 .studio-tutor-run-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The rail's study section: the page the study pane is on answers with the
+   same accent the pane's own nav used to carry. */
+.studio-tutor-run[aria-current="page"] { color: var(--text); background: var(--accent-wash); font-weight: 600; }
 
 .tut-surface {
   flex: 1;
@@ -46,28 +49,10 @@
   background: var(--surface);
 }
 
-.tut-hd {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-.tut-hd h2 { font-size: 15px; margin: 0; }
-
-.tut-nav { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
-.tut-nav button {
-  border: none; background: none; padding: 6px 10px; border-radius: 8px;
-  color: var(--muted); cursor: pointer; font-size: 13px;
-}
-.tut-nav button[aria-current="page"] { background: var(--accent-wash); color: var(--text); font-weight: 600; }
-
-.tut-hd-acts { display: flex; gap: 4px; }
-.tut-hd-acts button {
-  border: none; background: none; padding: 6px 10px; border-radius: 8px;
-  color: var(--muted); cursor: pointer; font-size: 13px;
-}
+/* The pane's header is the window's own chrome row — the same
+   .chrome/.crumb/.thbtn vocabulary the conversation panes use — so the two
+   panes read as one window. Only the crumb's current-page name is its own. */
+.tut-chrome .tut-crumb-page { color: var(--muted); }
 
 .tut-body { flex: 1; overflow-y: auto; padding: 16px; }
 

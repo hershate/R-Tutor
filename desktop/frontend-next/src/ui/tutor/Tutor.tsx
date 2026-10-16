@@ -65,40 +65,52 @@ export function Tutor({ port, view, onGo, onChat, onSettings, onError }: Props) 
     void boot(port);
   }, [port]);
 
+  // The crumb answers "where am I" with the page's own name — the same slot
+  // the chat pane's crumb answers from; the pane's pages live in the shell's
+  // session rail now, not in a second nav drawn inside the pane.
+  const crumb = TUTOR_NAV.find((n) => n.key === view.k || (n.key === "plans" && (view.k === "plan" || view.k === "learn")));
+
   return (
     <div className="tut tut-root" aria-labelledby="tut-title">
-      <header className="tut-hd">
-        <h2 id="tut-title">{t("学习导师")}</h2>
-        <nav className="tut-nav" aria-label={t("学习导航")}>
-          {NAV.map((n) => (
-            <button
-              key={n.key}
-              type="button"
-              data-action="tutor.nav"
-              aria-current={view.k === n.key || (n.key === "plans" && view.k === "plan") ? "page" : undefined}
-              onClick={() => onGo(n.view)}
-            >
-              {n.label()}
-            </button>
-          ))}
-        </nav>
-        <div className="tut-hd-acts">
+      <div className="chrome tut-chrome">
+        <div className="crumb">
+          <b id="tut-title">{t("学习导师")}</b>
+          <span className="crumbsep">/</span>
+          <span className="tut-crumb-page">{crumb ? crumb.label() : t("学习目标")}</span>
+        </div>
+        <div className="r">
           <button
             type="button"
+            className="thbtn"
             data-action="tutor.search"
+            aria-label={t("搜索")}
+            title={t("搜索")}
             onClick={() => onGo({ k: "search" })}
-            aria-label={t("全局搜索")}
           >
-            {t("搜索")}
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7.2 3.1a4.1 4.1 0 1 0 0 8.2 4.1 4.1 0 0 0 0-8.2M10.3 10.3 13 13" /></svg>
           </button>
-          <button type="button" data-action="tutor.settings" onClick={onSettings}>
-            {t("设置")}
+          <button
+            type="button"
+            className="thbtn"
+            data-action="tutor.settings"
+            aria-label={t("设置")}
+            title={t("设置")}
+            onClick={onSettings}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M9 4v6M16 14v6" /></svg>
           </button>
-          <button type="button" data-action="tutor.chat" onClick={onChat}>
-            {t("聊天")}
+          <button
+            type="button"
+            className="thbtn"
+            data-action="tutor.chat"
+            aria-label={t("聊天")}
+            title={t("聊天")}
+            onClick={onChat}
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.4a1.2 1.2 0 0 1 1.2-1.2h7.2a1.2 1.2 0 0 1 1.2 1.2v5a1.2 1.2 0 0 1-1.2 1.2H7.2L4.4 13v-2.4a1.2 1.2 0 0 1-1.2-1.2Z" /></svg>
           </button>
         </div>
-      </header>
+      </div>
       <div className="tut-body">
         {view.k === "home" && <Home port={port} onGo={onGo} onError={onError} />}
         {view.k === "generate" && <Generate port={port} sid={view.sid} onGo={onGo} onError={onError} />}
@@ -116,7 +128,9 @@ export function Tutor({ port, view, onGo, onChat, onSettings, onError }: Props) 
   );
 }
 
-const NAV: { key: TutorView["k"]; label: () => string; view: TutorView }[] = [
+// The pane's pages, in the order the session rail lists them. The rail owns
+// the entries; the pane keeps only the crumb's current-page name.
+export const TUTOR_NAV: { key: TutorView["k"]; label: () => string; view: TutorView }[] = [
   { key: "home", label: () => t("学习目标"), view: { k: "home" } },
   { key: "plans", label: () => t("我的方案"), view: { k: "plans" } },
   { key: "review", label: () => t("复习"), view: { k: "review" } },

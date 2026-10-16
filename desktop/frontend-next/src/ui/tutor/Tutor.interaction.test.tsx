@@ -28,11 +28,13 @@ function mounted() {
   return { port, go, views, ...utils };
 }
 
-it("opens on the goal page with the navigation present", async () => {
+// The pane's page navigation lives in the shell's session rail, not inside
+// the pane; a standalone pane switches pages through its host, which is what
+// the harness's go stands in for.
+it("opens on the goal page", async () => {
   mounted();
   const start = await screen.findByRole("button", { name: "制定学习方案" }) as HTMLButtonElement;
   expect(start.disabled).toBe(true);
-  expect(screen.getByRole("navigation", { name: "学习导航" })).toBeTruthy();
 });
 
 it("runs a generation end to end: goal → progress steps → plan view", async () => {
@@ -140,11 +142,11 @@ it("exports the plan as an Anki deck, its wrong-book, slides, and degraded pdf",
   expect(pdfCalls[0]).toBe(calls[0]![0]);
 });
 
-it("switches to notes, creates one, and lists it", async () => {
+it("opens the notes page, creates one, and lists it", async () => {
   const user = userEvent.setup();
-  const { views } = mounted();
-  await user.click(await screen.findByRole("button", { name: "笔记" }));
-  expect(views[0]?.k).toBe("notes");
+  const { go } = mounted();
+  go({ k: "notes" });
+  expect(await screen.findByRole("button", { name: "新建" })).toBeTruthy();
   await user.click(await screen.findByRole("button", { name: "新建" }));
   const title = await screen.findByPlaceholderText("标题");
   await user.type(title, "第一篇笔记");
@@ -165,9 +167,9 @@ it("shows the honest empty state for a session with no pending questions", async
 
 it("files a text document and asks the knowledge base about it", async () => {
   const user = userEvent.setup();
-  const { views } = mounted();
-  await user.click(await screen.findByRole("button", { name: "知识库" }));
-  expect(views[0]?.k).toBe("kb");
+  const { go } = mounted();
+  go({ k: "kb" });
+  expect(await screen.findByRole("heading", { name: /知识库/ })).toBeTruthy();
   expect(await screen.findByText(/知识库还是空的/)).toBeTruthy();
 
   // Text in, parsed straight away; the row shows the parsed status.

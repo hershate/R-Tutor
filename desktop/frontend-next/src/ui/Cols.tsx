@@ -194,6 +194,11 @@ export function Cols(props: ColsProps) {
           onFiles={openFiles}
           onFeedback={(tab) => setFeedback(tab ?? "send")}
           onTutor={() => focusPane(TUTOR_PANE)}
+          tutorView={tutorView}
+          onTutorNav={(v) => {
+            focusPane(TUTOR_PANE);
+            onTutorView(v);
+          }}
           tutorPlans={tutorPlans}
           onOpenTutorPlan={onOpenTutorPlan}
           feedbackUnread={feedbackUnread}
