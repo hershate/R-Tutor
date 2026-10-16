@@ -284,3 +284,116 @@ it("drills a plan's wrong book through the server's judgement", async () => {
   expect(await screen.findByText(/出了错题本/)).toBeTruthy();
   expect(port.tutorQuizSubmit).toHaveBeenCalledWith("q9", "p1", "一份数据只有一个所有者");
 });
+
+// The write-back fires once every choice is judged, on the verdicts
+// themselves — a selection is not a result, and the verdict that just landed
+// is part of the set it reads.
+it("writes quiz progress back only after every choice is judged, verdicts included", async () => {
+  const user = userEvent.setup();
+  const port = new MockPort() as unknown as AgentPort;
+  const quizzes = [
+    { id: "c1", node_id: "k1", type: "choice" as const, question: "一加一等于？", options: ["2", "3"], answer: "2" },
+    { id: "c2", node_id: "k1", type: "choice" as const, question: "二加一等于？", options: ["3", "4"], answer: "3" },
+  ];
+  port.tutorQuizzes = vi.fn(async () => ({ title: "", quiz_count: quizzes.length, quizzes }));
+  // The first is answered wrong, the second right: the node lands at 0.5.
+  port.tutorQuizSubmit = vi.fn(async (qid: string) => ({ correct: qid === "c2", answer: qid === "c2" ? "3" : "2" }));
+  const record = vi.spyOn(port, "tutorProgressRecord");
+  render(<QuizPanel port={port} pid="p1" onError={() => undefined} />);
+
+  await user.click(await screen.findByRole("radio", { name: "2 3" }));
+  await user.click(screen.getAllByRole("button", { name: "判定" })[0]!);
+  await waitFor(() => {
+    expect(screen.getByText(/再想想/)).toBeTruthy();
+  });
+  // One judged of two: nothing is written back yet, and a picked-but-unjudged
+  // answer does not stand in for one.
+  expect(record).not.toHaveBeenCalled();
+
+  await user.click(screen.getByRole("radio", { name: "1 3" }));
+  await user.click(screen.getByRole("button", { name: "判定" }));
+  await waitFor(() => {
+    expect(record).toHaveBeenCalledTimes(1);
+  });
+  // The second verdict is in the set the score reads: one hit of two.
+  expect(record).toHaveBeenCalledWith("p1", "k1", "learning", 0.5);
+});
+
+// The wrongs-only mode walks the wrong book by its own index — the due cards
+// sitting in front of it in the "all" mode must not clamp it back to the
+// first item.
+it("walks each wrong quiz once in the wrongs-only review mode", async () => {
+  const user = userEvent.setup();
+  const port = new MockPort() as unknown as AgentPort;
+  port.tutorReviewDue = vi.fn(async () => ({ items: [], total: 2 }));
+  port.tutorReviewQueue = vi.fn(async () => ({
+    total: 2,
+    items: [
+      { plan_id: "p1", plan_topic: "React", node_id: "k1", name: "组件", status: "not_started", mastery: 0, next_review: "" },
+      { plan_id: "p1", plan_topic: "React", node_id: "k2", name: "状态", status: "not_started", mastery: 0, next_review: "" },
+    ],
+  }));
+  port.tutorWrongQueue = vi.fn(async () => ({
+    total: 2,
+    items: [
+      { id: "w1", plan_id: "p1", node_id: "k1", type: "choice" as const, question: "第一条错题", options: ["对", "错"], answer: "对" },
+      { id: "w2", plan_id: "p1", node_id: "k2", type: "choice" as const, question: "第二条错题", options: ["对", "错"], answer: "对" },
+    ],
+  }));
+  port.tutorWrongOverview = vi.fn(async () => ({ total: 2, items: [] }));
+  port.tutorQuizSubmit = vi.fn(async () => ({ correct: true }));
+  render(<Tutor port={port} view={{ k: "review" }} onGo={() => undefined} onChat={() => undefined} onSettings={() => undefined} onError={() => undefined} />);
+
+  await user.click(await screen.findByRole("button", { name: "错题" }));
+  expect(await screen.findByText("第一条错题")).toBeTruthy();
+  await user.click(screen.getByRole("radio", { name: "1 对" }));
+  await user.click(screen.getByRole("button", { name: "判定" }));
+  expect(await screen.findByText(/答对了/)).toBeTruthy();
+  // The advance beat hands the second wrong item — not the first one again.
+  await screen.findByText("第二条错题", {}, { timeout: 3000 });
+  expect(screen.queryByText("第一条错题")).toBeNull();
+});
+
+// The KB's generate button seeds a session the server never starts; the run
+// begins when the pane opens the ordinary generate flow, so the page lands
+// on live progress rather than on a session with no record.
+it("starts the seeded KB generation and lands on its progress", async () => {
+  const user = userEvent.setup();
+  const { go } = mounted();
+  go({ k: "kb" });
+  await user.click(await screen.findByRole("button", { name: "添加文本" }));
+  await user.type(await screen.findByPlaceholderText("标题（可空，取正文首行）"), "Rust 手册");
+  await user.type(screen.getByPlaceholderText("粘贴文本内容"), "所有权是 Rust 的核心概念。");
+  await user.click(screen.getByRole("button", { name: "入库" }));
+  const box = await screen.findByRole("checkbox", { name: /选择 Rust 手册/ });
+  await user.click(box);
+  await user.click(screen.getByRole("button", { name: /用所选生成方案/ }));
+  expect(await screen.findByText("正在生成你的学习方案")).toBeTruthy();
+});
+
+// A degraded run delivers a plan whose lists never landed — the kernel's nil
+// slices arrive as JSON null. The detail page says "none of those" instead of
+// taking the whole surface down.
+it("renders a degraded plan whose node, schedule, and topic lists are null", async () => {
+  const user = userEvent.setup();
+  const port = new MockPort() as unknown as AgentPort;
+  const plan = {
+    id: "p1", session_id: "s1", version: 1, title: "", topic: "",
+    created_at: "2026-10-16T00:00:00Z", updated_at: "2026-10-16T00:00:00Z",
+    intent: { topic: "", level: "未明确", goal: "系统学习并掌握 该主题", daily_minutes: 60 },
+    knowledge_map: { nodes: null },
+    stages: [
+      { index: 0, name: "入门", goal: "建立基础", difficulty: 1, estimated_weeks: 1, topics: null, milestone: "理解基础概念" },
+    ],
+    schedule: null,
+    metadata: { model: "mock" },
+  };
+  port.tutorPlan = vi.fn(async () => plan as never);
+  port.tutorPlanVersions = vi.fn(async () => []);
+  render(<Tutor port={port} view={{ k: "plan", pid: "p1" }} onGo={() => undefined} onChat={() => undefined} onSettings={() => undefined} onError={() => undefined} />);
+  expect(await screen.findByText("0 个知识点")).toBeTruthy();
+  expect(screen.getByText(/入门/)).toBeTruthy();
+  // The schedule tab renders its empty table rather than a blank surface.
+  await user.click(screen.getByRole("tab", { name: "时间线" }));
+  expect(screen.getByRole("table")).toBeTruthy();
+});
