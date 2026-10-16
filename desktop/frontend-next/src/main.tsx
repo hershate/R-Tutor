@@ -160,8 +160,16 @@ const SETTLE_CAP_MS = 6000;
 function arrive(shown: Promise<unknown>) {
   const root = document.documentElement;
   const cap = new Promise((done) => setTimeout(done, SETTLE_CAP_MS));
+  // The handover waits one frame so the entrance plays under the opening
+  // hole — but a webview whose frame pipeline never started must still be
+  // handed its window, so the frame is raced rather than awaited alone.
+  const frame = () =>
+    Promise.race([
+      new Promise((done) => requestAnimationFrame(() => done(null))),
+      new Promise((done) => setTimeout(() => done(null), 400)),
+    ]);
   void Promise.all([intro.held, Promise.race([shown, cap])])
-    .then(() => new Promise(requestAnimationFrame))
+    .then(() => frame())
     .then(() => {
       // Arms the app's own entrance under the opening hole, then lets go of
       // it: a .app that remounts later must not replay the window opening.

@@ -11,6 +11,10 @@ const WAIT_MS = 400;
 const SLOW_MS = 2500;
 const LEAVE_MS = 1600;
 const CALM_MS = 300;
+// How long the first frame of the intro may take to arrive. An embedded
+// webview can leave the frame pipeline unstarted — no rAF ever comes — and
+// without a limit the wordmark would hold its glint over a ready app forever.
+const FRAME_WAIT_MS = 700;
 
 export interface Intro {
   /** Resolves once the wordmark stands whole: played out, skipped, or calm. */
@@ -45,7 +49,14 @@ export function play(boot: HTMLElement | null): Intro {
   });
   let wait = 0;
   let slow = 0;
+  // The frame watchdog's timer; hold clears it, and it clears itself by way of
+  // skip→hold once the mark is down either way.
+  let frameWatch = 0;
+  let heldDone = false;
   const hold = () => {
+    if (heldDone) return;
+    heldDone = true;
+    clearTimeout(frameWatch);
     removeEventListener("pointerdown", skip);
     removeEventListener("keydown", skip);
     removeEventListener("resize", skip);
@@ -139,6 +150,9 @@ export function play(boot: HTMLElement | null): Intro {
   if (calm) {
     for (const el of letters) anims.push(el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: CALM_MS, fill: "both" }));
     settle();
+    // Even a reduced-motion page still runs its animations on the frame
+    // clock; if that clock never ticks, the skip path lands the mark.
+    frameWatch = setTimeout(skip, CALM_MS + FRAME_WAIT_MS);
   } else {
     const word = svg.getBoundingClientRect();
     const rr = letters[0].getBoundingClientRect();
@@ -155,6 +169,7 @@ export function play(boot: HTMLElement | null): Intro {
     const tick = (now: number) => {
       if (skipped) return;
       if (!started) {
+        clearTimeout(frameWatch);
         choreograph(shift);
         t0 = now;
       }
@@ -163,6 +178,7 @@ export function play(boot: HTMLElement | null): Intro {
       if (t < BEAT.quiet) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
+    frameWatch = setTimeout(skip, FRAME_WAIT_MS);
     addEventListener("pointerdown", skip);
     addEventListener("keydown", skip);
     addEventListener("resize", skip);
