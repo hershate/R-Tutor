@@ -7,13 +7,12 @@ import { App } from "./App";
 import { Appearance } from "./Appearance";
 import { MockHub } from "../port/mock_hub";
 import { MockPort } from "../port/mock";
-import { setShowsSessionTabs } from "../state/prefs";
 
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
-  setShowsSessionTabs(false);
-  localStorage.removeItem("rx-show-session-tabs");
+  // The strip is on by default now; a test that wants it off writes "off"
+  // itself, exactly like a window that turned the appearance switch off.
 });
 afterEach(cleanup);
 
@@ -46,32 +45,31 @@ const settled = () => waitFor(() => {
   if (!document.querySelector(".crumb b")?.textContent) throw new Error("the active pane has not loaded");
 });
 
-describe("opt-in session tabs", () => {
-  it("keeps the strip hidden by default even with two sessions open", async () => {
+describe("session tabs on by default", () => {
+  it("shows the strip by default with two sessions open", async () => {
     draw(await hub());
     await settled();
-    expect(toggle().getAttribute("aria-checked")).toBe("false");
-    expect(strip()).toBeNull();
-  });
-
-  it("shows and hides the open tabs immediately through the appearance switch", async () => {
-    draw(await hub());
-    await settled();
-    await userEvent.click(toggle());
+    expect(toggle().getAttribute("aria-checked")).toBe("true");
     // The pinned Study tab rides first, so two conversations read three tabs.
-    await waitFor(() => expect(strip()?.querySelectorAll('[role="tab"]').length).toBe(3));
-    await userEvent.click(toggle());
-    expect(strip()).toBeNull();
+    expect(strip()?.querySelectorAll('[role="tab"]').length).toBe(3);
   });
 
-  it("shows a strip for a single session once enabled: the pinned study tab rides first", async () => {
+  it("hides and shows the open tabs immediately through the appearance switch", async () => {
+    draw(await hub());
+    await settled();
+    await userEvent.click(toggle());
+    expect(strip()).toBeNull();
+    await userEvent.click(toggle());
+    await waitFor(() => expect(strip()?.querySelectorAll('[role="tab"]').length).toBe(3));
+  });
+
+  it("shows a strip for a single session by default: the pinned study tab rides first", async () => {
     draw(await hub(1));
     await settled();
-    await userEvent.click(toggle());
-    expect(toggle().getAttribute("aria-checked")).toBe("true");
-    // The strip is no longer two-conversations-or-nothing: the tutor is a
-    // pinned first tab, so one conversation joining it already makes a pair.
+    // The tutor is a pinned first tab, so one conversation joining it
+    // already makes a pair.
     const tabs = strip()?.querySelectorAll('[role="tab"]');
+    expect(toggle().getAttribute("aria-checked")).toBe("true");
     expect(tabs?.length).toBe(2);
     expect(tabs?.[0]?.textContent).toContain("学习");
   });
@@ -80,19 +78,20 @@ describe("opt-in session tabs", () => {
     const kernel = await hub();
     const first = draw(kernel);
     await settled();
+    // Start from the default (on), turn it off, and let the choice survive.
     await userEvent.click(toggle());
     first.unmount();
 
     const second = draw(kernel);
     await settled();
-    expect(toggle().getAttribute("aria-checked")).toBe("true");
-    expect(strip()?.querySelectorAll('[role="tab"]').length).toBe(3);
+    expect(toggle().getAttribute("aria-checked")).toBe("false");
+    expect(strip()).toBeNull();
     await userEvent.click(toggle());
     second.unmount();
 
     draw(kernel);
     await settled();
-    expect(toggle().getAttribute("aria-checked")).toBe("false");
-    expect(strip()).toBeNull();
+    expect(toggle().getAttribute("aria-checked")).toBe("true");
+    expect(strip()?.querySelectorAll('[role="tab"]').length).toBe(3);
   });
 });

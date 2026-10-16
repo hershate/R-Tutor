@@ -385,14 +385,17 @@ export function useSendShortcut(): SendShortcut {
 }
 
 // The sidebar remains the default session switcher. Tabs are a local display
-// choice and do not change which sessions stay open in the kernel.
+// choice and do not change which sessions stay open in the kernel. With the
+// study pane pinned among them, the strip is the one bar that names every
+// pane, so it is on until the window says otherwise — only an explicit "off"
+// hides it; the old opt-in default left the panes unlabelled.
 const SESSION_TABS_KEY = "rx-show-session-tabs";
-let sessionTabsVisible = false;
+let sessionTabsVisible = true;
 const sessionTabListeners = new Set<() => void>();
 
 export function showsSessionTabs(): boolean {
   try {
-    return localStorage.getItem(SESSION_TABS_KEY) === "on";
+    return localStorage.getItem(SESSION_TABS_KEY) !== "off";
   } catch {
     return sessionTabsVisible;
   }
