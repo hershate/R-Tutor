@@ -94,14 +94,14 @@ export function Home({ port, onGo, onError }: Props) {
       // parse failure keeps the row confirmed with the reason on it, so the
       // pipeline can still refuse honestly downstream.
       for (let i = 0; i < files.length; i++) {
-        setProgress(t("处理资料 {n}/{m}", { n: i, m: files.length }));
+        setProgress(t("处理资料 {n}/{m}", { n: i + 1, m: files.length }));
         const f = files[i]!;
         const bytes = new Uint8Array(await f.file.arrayBuffer());
         const material = await port.tutorMaterialUpload(session.id, f.file.name, toBase64(bytes));
         await port.tutorMaterialConfirm(session.id, material.id, f.mode);
       }
       for (let i = 0; i < urls.length; i++) {
-        setProgress(t("抓取网页 {n}/{m}", { n: i, m: urls.length }));
+        setProgress(t("抓取网页 {n}/{m}", { n: i + 1, m: urls.length }));
         await port.tutorMaterialURL(session.id, urls[i]!);
       }
       setProgress("");
@@ -446,7 +446,7 @@ function Heatmap({ days }: { days: Record<string, number> }) {
             <i
               key={d.date}
               data-level={d.minutes < 0 ? "future" : d.minutes === 0 ? "0" : d.minutes < 30 ? "1" : d.minutes < 60 ? "2" : "3"}
-              title={`${d.date} · ${t("{n} 分钟", { n: d.minutes })}`}
+              title={d.minutes < 0 ? d.date : `${d.date} · ${t("{n} 分钟", { n: d.minutes })}`}
             />
           ))}
         </span>
