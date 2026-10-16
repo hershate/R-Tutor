@@ -59,7 +59,12 @@ export function Review({ port, onGo, onError }: Props) {
   useEffect(load, [port, onError]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const card = cards[at];
-  const quiz = mode === "quiz" || (mode === "all" && !card) ? wrongs[quizOffset(at, cards.length)] : undefined;
+  // Where the wrong item for this position sits. In the "all" mode the due
+  // cards hold the first positions and the wrongs follow them; in the
+  // wrongs-only mode the wrongs are the whole deck, so `at` indexes them
+  // directly — clamping through the card count would repeat the first item.
+  const quizAt = mode === "quiz" ? at : Math.max(0, at - cards.length);
+  const quiz = mode === "quiz" || (mode === "all" && !card) ? wrongs[quizAt] : undefined;
 
   const rate = (level: 0 | 1 | 2) => {
     if (!card) return;
@@ -144,7 +149,16 @@ export function Review({ port, onGo, onError }: Props) {
         <div className="tut-filter" role="group" aria-label={t("复习范围")}>
           {MODES.map((m) => (
             <button key={m.key} type="button" data-action="tutor.review-mode" aria-pressed={mode === m.key}
-              onClick={() => { setMode(m.key); setAt(0); setFlipped(false); }}>{m.label()}</button>
+              onClick={() => {
+                setMode(m.key);
+                setAt(0);
+                setFlipped(false);
+                // Each mode indexes the wrongs its own way, so a pick or a
+                // result from the mode being left would answer for a different
+                // item in the one being entered.
+                setQuizPick({});
+                setQuizResult({});
+              }}>{m.label()}</button>
           ))}
         </div>
 
@@ -193,28 +207,25 @@ export function Review({ port, onGo, onError }: Props) {
             <p className="tut-dim">{at + 1}/{totalAll} · {t("错题重练")}</p>
             <p className="tut-quiz-q">{quiz.question}</p>
             <div role="radiogroup" aria-label={quiz.question}>
-              {(quiz.options ?? []).map((opt, j) => {
-                const offset = quizOffset(at, cards.length);
-                return (
-                  <label key={j} className="tut-opt">
-                    <input type="radio" name={`rev-${at}`} data-action="tutor.review-pick"
-                      checked={quizPick[offset] === opt}
-                      onChange={() => setQuizPick((p) => ({ ...p, [offset]: opt }))} />
-                    <span className="tut-opt-badge">{j + 1}</span> {opt}
-                  </label>
-                );
-              })}
+              {(quiz.options ?? []).map((opt, j) => (
+                <label key={j} className="tut-opt">
+                  <input type="radio" name={`rev-${at}`} data-action="tutor.review-pick"
+                    checked={quizPick[quizAt] === opt}
+                    onChange={() => setQuizPick((p) => ({ ...p, [quizAt]: opt }))} />
+                  <span className="tut-opt-badge">{j + 1}</span> {opt}
+                </label>
+              ))}
             </div>
             <button
               type="button" data-action="tutor.review-judge"
-              disabled={!quizPick[quizOffset(at, cards.length)] || quizResult[quizOffset(at, cards.length)] !== undefined}
-              onClick={() => void judgeQuiz(quiz, quizOffset(at, cards.length))}
+              disabled={!quizPick[quizAt] || quizResult[quizAt] !== undefined}
+              onClick={() => void judgeQuiz(quiz, quizAt)}
             >
               {t("判定")}
             </button>
-            {quizResult[quizOffset(at, cards.length)] !== undefined && (
-              <p className={quizResult[quizOffset(at, cards.length)] ? "tut-ok" : "tut-error"}>
-                {quizResult[quizOffset(at, cards.length)] ? `✓ ${t("答对了")}` : `✕ ${quiz.answer ? t("正确答案：{answer}", { answer: quiz.answer }) : t("再想想")}`}
+            {quizResult[quizAt] !== undefined && (
+              <p className={quizResult[quizAt] ? "tut-ok" : "tut-error"}>
+                {quizResult[quizAt] ? `✓ ${t("答对了")}` : `✕ ${quiz.answer ? t("正确答案：{answer}", { answer: quiz.answer }) : t("再想想")}`}
               </p>
             )}
           </>
@@ -228,8 +239,4 @@ export function Review({ port, onGo, onError }: Props) {
       </div>
     </div>
   );
-}
-
-function quizOffset(at: number, cardCount: number) {
-  return Math.max(0, at - cardCount);
 }
