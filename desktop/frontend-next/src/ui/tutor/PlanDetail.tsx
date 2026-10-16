@@ -131,7 +131,11 @@ export function PlanDetail({ port, pid, initialTab, onGo, onError }: Props) {
   }
 
   const regen = list.find((e) => e.sessionId === plan.session_id && e.phase === "running");
-  const nodes = plan.knowledge_map.nodes;
+  // A degraded run delivers a plan whose lists never landed: the kernel's nil
+  // slices arrive as JSON null, and the page must say "none of those" rather
+  // than die on a null read.
+  const nodes = plan.knowledge_map?.nodes ?? [];
+  const schedule = plan.schedule ?? [];
   const weeks = plan.stages.reduce((sum, s) => sum + s.estimated_weeks, 0);
   const resourceCount = plan.stages.reduce((sum, s) => sum + (s.resources?.length ?? 0), 0);
 
@@ -213,7 +217,7 @@ export function PlanDetail({ port, pid, initialTab, onGo, onError }: Props) {
               </summary>
               <p>{s.goal}</p>
               <ul>
-                {s.topics.map((topic, i) => (
+                {(s.topics ?? []).map((topic, i) => (
                   <li key={i}>
                     {topic.name}{topic.must_learn ? ` · ${t("必学")}` : ""}
                     {topic.why ? <span className="tut-dim"> — {topic.why}</span> : null}
@@ -246,7 +250,7 @@ export function PlanDetail({ port, pid, initialTab, onGo, onError }: Props) {
           <table className="tut-table">
             <thead><tr><th>{t("日期")}</th><th>{t("阶段")}</th><th>{t("任务")}</th><th>{t("分钟")}</th></tr></thead>
             <tbody>
-              {plan.schedule.map((d) => (
+              {schedule.map((d) => (
                 <tr key={d.date}>
                   <td>{d.date}</td>
                   <td>{plan.stages[d.stage_index]?.name ?? d.stage_index}</td>
