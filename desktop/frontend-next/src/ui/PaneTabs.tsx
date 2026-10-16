@@ -7,6 +7,7 @@ import { useMarker } from "./marker";
 import { useDismiss } from "./dismiss";
 import { isUnread, type Trees } from "./unread";
 import { UnreadDot } from "./UnreadMark";
+import { TUTOR_PANE } from "./activepane";
 
 export interface TabView {
   rt: RuntimeView;
@@ -58,12 +59,16 @@ interface Props {
   // True when the panes span more than one folder — only then is the folder
   // worth the room, because otherwise every tab repeats the same word.
   showRoot: boolean;
+  /** The pinned first tab — the study tutor's pane. It is not one of `tabs`
+   *  because it is not a conversation: no close button, no rename, no menu,
+   *  and "close others" never offers it. */
+  home?: { title: string; onFocus: () => void };
   onFocus: (id: string) => void;
   onClose: (ids: string[]) => void;
   onRename: (rt: RuntimeView, title: string, mode?: "inline" | "dialog") => void;
 }
 
-export function PaneTabs({ tabs, active, showRoot, onFocus, onClose, onRename }: Props) {
+export function PaneTabs({ tabs, active, showRoot, home, onFocus, onClose, onRename }: Props) {
   const bar = useRef<HTMLDivElement>(null);
   const mark = useMarker(bar, '.ptab[aria-selected="true"]', "x", [active, tabs.length]);
   // id + 屏幕坐标：页签条是横向滚动容器，overflow 会把 absolute 定位的菜单
@@ -168,6 +173,21 @@ export function PaneTabs({ tabs, active, showRoot, onFocus, onClose, onRename }:
 
   return (
     <div className="panetabs" ref={bar} role="tablist" aria-label={t("会话面板")} onKeyDown={arrowTabs}>
+      {home && (
+        <div
+          className="ptab ptab-home"
+          data-pane={TUTOR_PANE}
+          data-action-click="pane.activate"
+          role="tab"
+          tabIndex={active === TUTOR_PANE ? 0 : -1}
+          aria-selected={active === TUTOR_PANE}
+          title={home.title}
+          onClick={home.onFocus}
+        >
+          <i className="pip" />
+          <span className="ptab-nm">{home.title}</span>
+        </div>
+      )}
       {tabs.map(({ rt, title, run, unread }) => (
         <div
           key={rt.id}

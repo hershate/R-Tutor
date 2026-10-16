@@ -7,6 +7,7 @@ import type { AccountState } from "../port/port";
 import type { HubPort, RuntimeView, TreeWorkspace } from "../port/hub";
 import type { RemoteHost } from "../port/remote";
 import type { Adder } from "./addws";
+import type { TutorPlanSummary } from "../port/tutor";
 import { AccountRow } from "./AccountRow";
 import { RailSearch } from "./railsearch";
 import { RemoteHosts } from "./RemoteHosts";
@@ -62,8 +63,12 @@ interface Props {
   onSettings: (section?: string) => void;
   onFiles: () => void;
   onFeedback: (tab?: "send" | "mine") => void;
-  /** Opens the study tutor sheet. */
+  /** Focuses the tutor's pinned pane. */
   onTutor: () => void;
+  /** The tutor's plans — the runs a generation produced — listed beside chat
+   *  sessions so both halves of the window read from one column. */
+  tutorPlans?: TutorPlanSummary[];
+  onOpenTutorPlan?: (id: string) => void;
   // Reports with a new reply or a question waiting; the entry and the palette say so.
   feedbackUnread: number;
   onFind: () => void;
@@ -112,6 +117,8 @@ export function Sidebar({
   onFiles,
   onFeedback,
   onTutor,
+  tutorPlans = [],
+  onOpenTutorPlan,
   feedbackUnread,
   onFind,
   onError,
@@ -275,6 +282,23 @@ export function Sidebar({
           <button className="studio-filter-search" data-action="workspace.search" ref={magnifier} onClick={toggleFind} aria-label={t("按名称筛选会话")}><StudioIcon name="search" /></button>
         </div>
       </div>
+      {tutorPlans.length > 0 && onOpenTutorPlan && (
+        <div className="studio-tutor-runs">
+          <div className="studio-section-label studio-tutor-label"><span>{t("学习方案")}</span></div>
+          {tutorPlans.slice(0, 6).map((plan) => (
+            <button
+              key={plan.id}
+              className="studio-tutor-run"
+              data-action="tutor.open-plan"
+              data-value={plan.id}
+              title={plan.title}
+              onClick={() => onOpenTutorPlan(plan.id)}
+            >
+              <span className="studio-tutor-run-t">{plan.title}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <RailSearch>
       <Workspaces
         hub={hub}

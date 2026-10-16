@@ -3,6 +3,12 @@
 // one a given window was looking at. Per tab, so two windows never trade theirs.
 const KEY = "rx-active-pane";
 
+// The study tutor's pane id. The tutor is not a kernel runtime — its data lives
+// under the machine's tutor store, not in a session — so its pane is a fixed
+// identity the strip and the focus machinery share, pinned first like a home
+// tab: always present, never closed, one click from anywhere in the window.
+export const TUTOR_PANE = "tutor";
+
 export function savedActivePane(): string {
   try {
     return sessionStorage.getItem(KEY) ?? "";

@@ -6,6 +6,7 @@ import { reason } from "../i18n/kernel";
 import { t } from "../i18n";
 import type { AccountState, AgentPort, ProviderSetup } from "../port/port";
 import type { HubPort, RuntimeView, TreeWorkspace } from "../port/hub";
+import type { TutorPlanSummary } from "../port/tutor";
 import { Chrome } from "./Chrome";
 import { RailToggle } from "./RailToggle";
 import { useLaunchHealth } from "./launchhealth";
@@ -25,7 +26,7 @@ import { RemoteAsk } from "./RemoteAsk";
 import { useFeedbackUnread } from "./useFeedbackUnread";
 import { Feedback, type FeedbackTab } from "./Feedback";
 import { consumeSurfaceHash, type TutorView } from "./tutor/Tutor";
-import { TutorSurface } from "./TutorSurface";
+import { Cols } from "./Cols";
 import { usePaneForSheets } from "./usePaneForSheets";
 import { BrowserLogin } from "./BrowserLogin";
 import type { RemoteAsk as RemoteAskT, RemoteHost } from "../port/remote";
@@ -34,7 +35,7 @@ import { SettingsUnavailable } from "./SettingsUnavailable";
 import { useMachineBooks } from "./machinebooks";
 import { usePaint } from "./paint";
 import { useZoomKeys } from "./zoomkeys";
-import { rememberActivePane, savedActivePane } from "./activepane";
+import { TUTOR_PANE, rememberActivePane, savedActivePane } from "./activepane";
 import { Sky } from "./Sky";import { useAddWorkspace } from "./addws";
 import { AddWorkspacePrompt } from "./AddWorkspacePrompt";
 import type { PaneReport } from "./Pane";
@@ -83,20 +84,6 @@ const Settings = lazy(async () => {
   return { default: loaded.module!.Settings };
 });
 
-// The chat page is the heaviest thing this window can open, and the tutor is
-// what it opens on. The page's chunk is fetched with the shell — the settings
-// precedent — so the first click is not the network's critical path, while the
-// tutor's first paint parses none of the page's code.
-const chatPageModule = import("./ChatPage").then(
-  (module) => ({ module, error: null as unknown }),
-  (error: unknown) => ({ module: null, error }),
-);
-const ChatPage = lazy(async () => {
-  const loaded = await chatPageModule;
-  if (loaded.error) throw loaded.error;
-  return { default: loaded.module!.ChatPage };
-});
-
 const NO_REPORT: PaneReport = {
   status: null,
   title: "",
@@ -118,7 +105,12 @@ export function App({ hub }: { hub: HubPort }) {
   const sessionTabs = useSyncExternalStore(onShowsSessionTabsChange, showsSessionTabs, showsSessionTabs);
   const [runtimes, setRuntimes] = useState<RuntimeView[]>([]);
   const [panesRead, setPanesRead] = useState(false);
-  const [active, setActive] = useState(savedActivePane);
+  // A #chat address hands the window to a conversation; anything else — the
+  // bare address a launch has — opens on the tutor's pinned pane. The tutor is
+  // a fixed pane id, not a runtime: it cannot be closed, only left.
+  const [active, setActive] = useState<string>(() =>
+    consumeSurfaceHash() === "chat" ? savedActivePane() : TUTOR_PANE,
+  );
   const [tree, setTree] = useState<TreeWorkspace[]>([]);
   // An empty tree before the first read settles is an unread one, not a
   // machine with no folders; only the kernel's answer can say the latter.
@@ -149,10 +141,15 @@ export function App({ hub }: { hub: HubPort }) {
   // false = closed, true = open at its last section, a string = open there.
   const [settings, setSettings] = useState<string | boolean>(false);
   const [feedback, setFeedback] = useState<FeedbackTab | null>(null);
-  // The study tutor is the app's surface; the agent chat — Reasonix's full
-  // surface — is a page within it. A #tutor or #chat address picks once.
-  const [surface, setSurface] = useState<"tutor" | "chat">(() => consumeSurfaceHash() ?? "tutor");
+  // The study tutor is a pinned pane the window opens on; which of its views
+  // is showing survives pane switches, so leaving for a conversation and back
+  // loses no place.
   const [tutorView, setTutorView] = useState<TutorView>({ k: "home" });
+  // The tutor's plans, listed in the rail beside chat sessions. Read on the
+  // same beats the rail refreshes for: launch, and each return to the pane
+  // that writes them — a generation while the pane is away is what the next
+  // return is for.
+  const [tutorPlans, setTutorPlans] = useState<TutorPlanSummary[]>([]);
   const [feedbackUnread, setFeedbackUnread] = useState(0);
   const [browser, setBrowser] = useState(false);
   const [browserAsk, setBrowserAsk] = useState(0);
@@ -165,6 +162,22 @@ export function App({ hub }: { hub: HubPort }) {
   // so the takeover remounts it: every bit of what is on screen belonged to the
   // conversation it just left.
   const [takeover, setTakeover] = useState<Record<string, number>>({});
+  // A pane that rebinds to another transcript starts its press counters over:
+  // the remounted pane replays a press that arrived before it existed, and one
+  // made against the old transcript is not owed by the new one.
+  const prevTakeover = useRef(takeover);
+  useEffect(() => {
+    for (const id of Object.keys(takeover)) {
+      if (takeover[id] === prevTakeover.current[id]) continue;
+      setFilesRequests((requests) => {
+        if (!(id in requests)) return requests;
+        const next = { ...requests };
+        delete next[id];
+        return next;
+      });
+    }
+    prevTakeover.current = takeover;
+  }, [takeover]);
   // Every pane's run state, so a tab can show that the conversation behind it
   // is still working. Read through a ref by the report handler, which must stay
   // stable or each frame would re-render every pane.
@@ -242,7 +255,15 @@ export function App({ hub }: { hub: HubPort }) {
     }
     setRuntimes(list);
     setPanesRead(true);
-    setActive((cur) => (list.some((rt) => rt.id === cur) ? cur : (list[0]?.id ?? "")));
+    // The tutor pane is always a legal place to stand, and a pane that went
+    // away hands the window to what remains — or to the tutor, rather than to
+    // a blank. An empty hand keeps its emptiness when there is nothing to
+    // hand it to: the empty-conversation state is an answer, not a blank.
+    setActive((cur) => {
+      if (cur === TUTOR_PANE || list.some((rt) => rt.id === cur)) return cur;
+      if (cur === "") return list[0]?.id ?? "";
+      return list[0]?.id ?? TUTOR_PANE;
+    });
     await reloadTree();
     void reloadRemoteTrees();
   }, [hub, reloadTree, reloadRemoteTrees]);
@@ -319,6 +340,18 @@ export function App({ hub }: { hub: HubPort }) {
   const activePort = panePorts.get(active) ?? panePorts.values().next().value ?? null;
   const machinePort = useMemo(() => hub.machinePort(), [hub]);
   const tutorPort = useMemo(() => hub.tutorPort(), [hub]); // top-level /tutor routes; the settings base 404s them
+  const readTutorPlans = useMemo(
+    () => singleFlight(() => tutorPort.tutorPlans().then(setTutorPlans).catch(() => {})),
+    [tutorPort],
+  );
+  useEffect(() => {
+    void readTutorPlans();
+  }, [readTutorPlans]);
+  // Returning to the pane that writes the plans is when a stale row would be
+  // read as the newest run; the fetch is cheap and single-flighted.
+  useEffect(() => {
+    if (active === TUTOR_PANE) void readTutorPlans();
+  }, [active, readTutorPlans]);
   const machineRt = runtimes.find((rt) => !rt.host);
   const localRt = runtimes.find((rt) => rt.id === active && !rt.host) ?? machineRt;
   const localWorkspacePort = useMemo(() => hub.machinePort(localRt?.id), [hub, localRt?.id]);
@@ -405,6 +438,17 @@ export function App({ hub }: { hub: HubPort }) {
   }, [active, panePorts, hidePrefs]);
 
   const openPane = useOpenPane({ hub, runtimes, panePorts, active, reportsRef, runsRef, setRuntimes, setActive, setTakeover, reloadPanes: refreshPanes, sw });
+
+  // A rail row for a study plan goes to the plan, not just the pane: the row
+  // names one run, and landing on the tutor's last view would hide the thing
+  // the click was about.
+  const openTutorPlan = useCallback(
+    (id: string) => {
+      focusPane(TUTOR_PANE);
+      setTutorView({ k: "plan", pid: id });
+    },
+    [focusPane],
+  );
 
   // Awaitable because deleting a conversation has to close its pane first and
   // then wait: the kernel refuses to erase a transcript its runtime still holds,
@@ -497,6 +541,16 @@ export function App({ hub }: { hub: HubPort }) {
   // the window's, not whichever project happens to sit first in the tree.
   const newSessionRoot = activeWorkspace?.root;
 
+  // The tutor header's chat exit: back to the conversation already open, or a
+  // fresh one when none is — the same thing the rail's new-session button does.
+  const openChat = useCallback(() => {
+    if (runtimes.length > 0) {
+      focusPane(runtimes[0]!.id);
+      return;
+    }
+    void openPane({ root: newSessionRoot }).catch(fail);
+  }, [runtimes, focusPane, openPane, newSessionRoot, fail]);
+
   usePaneForSheets({
     settings: !!settings,
     feedback: feedback !== null,
@@ -579,7 +633,7 @@ export function App({ hub }: { hub: HubPort }) {
     <div
       className="app"
       data-run={report.run}
-      data-surface={surface}
+      data-surface={active === TUTOR_PANE ? "tutor" : "chat"}
       data-rail={rail ? "on" : "off"}
       data-nav={navRail.shown ? "on" : "off"}
       data-browser={browser ? "on" : "off"}
@@ -596,7 +650,7 @@ export function App({ hub }: { hub: HubPort }) {
         host={runtimes.find((rt) => rt.id === active)?.host}
         port={activePort}
         status={report.status}
-        title={surface === "tutor" ? t("学习导师") : (tabs.find((tab) => tab.rt.id === active)?.title ?? report.title)}
+        title={active === TUTOR_PANE ? t("学习导师") : (tabs.find((tab) => tab.rt.id === active)?.title ?? report.title)}
         steer={report.steer}
         onSettings={showPrefs}
         onBrowser={() => {
@@ -613,90 +667,81 @@ export function App({ hub }: { hub: HubPort }) {
 
       {pack?.sky && effects !== "reduced" && <Sky />}
 
-      {surface === "tutor" ? (
-        <TutorSurface
-          port={tutorPort}
-          view={tutorView}
-          onGo={setTutorView}
-          onChat={() => setSurface("chat")}
-          onSettings={() => showPrefs()}
-          onError={setError}
-          notice={errorBar}
-        />
-      ) : (
-        // Same tree, same props, one lazy boundary later: the fallback keeps
-        // the column frame so the page does not jump when the chunk lands.
-        <Suspense fallback={<div className="cols" aria-busy="true" />}>
-          <ChatPage
-            hub={hub}
-            navRail={navRail}
-            settings={settings}
-            showPrefs={showPrefs}
-            hidePrefs={hidePrefs}
-            openFiles={openFiles}
-            openFind={openFind}
-            setRail={setRail}
-            setFeedback={setFeedback}
-            setSurface={setSurface}
-            setClaimed={setClaimed}
-            setBrowser={setBrowser}
-            feedbackUnread={feedbackUnread}
-            newSessionRoot={newSessionRoot}
-            openPane={openPane}
-            openRemotePane={openRemotePane}
-            fail={fail}
-            viewed={viewed}
-            treeRead={treeRead}
-            tree={tree}
-            rail={rail}
-            runtimes={runtimes}
-            runs={runs}
-            active={active}
-            activeWorkspace={activeWorkspace}
-            liveIds={liveIds}
-            listedIds={listedIds}
-            pinnedSessions={pinnedSessions}
-            togglePinnedSession={togglePinnedSession}
-            remotes={remotes}
-            reloadRemotes={reloadRemotes}
-            reloadRemoteTrees={reloadRemoteTrees}
-            readRemoteTree={readRemoteTree}
-            reloadTree={reloadTree}
-            paging={paging}
-            adder={adder}
-            sw={sw}
-            focusPane={focusPane}
-            closePanes={closePanes}
-            panePorts={panePorts}
-            archiveSession={archiveSession}
-            renameSession={renameSession}
-            account={account}
-            accountUnread={accountUnread}
-            report={report}
-            railW={railW}
-            onRailW={onRailW}
-            sessionTabs={sessionTabs}
-            tabs={tabs}
-            manyRoots={manyRoots}
-            dropPanes={dropPanes}
-            onReport={onReport}
-            refreshPanes={refreshPanes}
-            settingsPulse={settingsPulse}
-            findPulse={findPulse}
-            filesRequests={filesRequests}
-            bar={bar}
-            needsProject={needsProject}
-            scheme={scheme}
-            shownDockW={shownDockW}
-            dockLimit={dockLimit}
-            onDockW={onDockW}
-            browser={browser}
-            browserAsk={browserAsk}
-            takeover={takeover}
-            activePaneShown={activePaneShown}
-          />
-        </Suspense>
-      )}
+      <Cols
+        hub={hub}
+        navRail={navRail}
+        settings={settings}
+        showPrefs={showPrefs}
+        hidePrefs={hidePrefs}
+        openFiles={openFiles}
+        openFind={openFind}
+        setRail={setRail}
+        setFeedback={setFeedback}
+        setClaimed={setClaimed}
+        setBrowser={setBrowser}
+        feedbackUnread={feedbackUnread}
+        newSessionRoot={newSessionRoot}
+        openPane={openPane}
+        openRemotePane={openRemotePane}
+        fail={fail}
+        viewed={viewed}
+        treeRead={treeRead}
+        tree={tree}
+        rail={rail}
+        runtimes={runtimes}
+        runs={runs}
+        active={active}
+        activeWorkspace={activeWorkspace}
+        liveIds={liveIds}
+        listedIds={listedIds}
+        pinnedSessions={pinnedSessions}
+        togglePinnedSession={togglePinnedSession}
+        remotes={remotes}
+        reloadRemotes={reloadRemotes}
+        reloadRemoteTrees={reloadRemoteTrees}
+        readRemoteTree={readRemoteTree}
+        reloadTree={reloadTree}
+        paging={paging}
+        adder={adder}
+        sw={sw}
+        focusPane={focusPane}
+        closePanes={closePanes}
+        panePorts={panePorts}
+        archiveSession={archiveSession}
+        renameSession={renameSession}
+        account={account}
+        accountUnread={accountUnread}
+        report={report}
+        railW={railW}
+        onRailW={onRailW}
+        sessionTabs={sessionTabs}
+        tabs={tabs}
+        manyRoots={manyRoots}
+        dropPanes={dropPanes}
+        onReport={onReport}
+        refreshPanes={refreshPanes}
+        settingsPulse={settingsPulse}
+        findPulse={findPulse}
+        filesRequests={filesRequests}
+        bar={bar}
+        needsProject={needsProject}
+        scheme={scheme}
+        shownDockW={shownDockW}
+        dockLimit={dockLimit}
+        onDockW={onDockW}
+        browser={browser}
+        browserAsk={browserAsk}
+        takeover={takeover}
+        activePaneShown={activePaneShown}
+        tutorPort={tutorPort}
+        tutorView={tutorView}
+        onTutorView={setTutorView}
+        tutorPlans={tutorPlans}
+        onOpenTutorPlan={openTutorPlan}
+        onChat={openChat}
+        onTutorError={setError}
+        tutorNotice={errorBar}
+      />
 
       {adder.pathOpen && <AddWorkspacePrompt busy={adder.busy} onSubmit={adder.addPath} onClose={adder.closePath} />}
       {renaming && (
@@ -740,7 +785,7 @@ export function App({ hub }: { hub: HubPort }) {
         </Suspense>
         </Boundary>
       )}
-      {surface === "chat" && <RailToggle rail={rail} onRail={() => setRail((v) => !v)} />}
+      {active !== TUTOR_PANE && <RailToggle rail={rail} onRail={() => setRail((v) => !v)} />}
       <StopHint armed={stopArmed} />
     </div>
   );

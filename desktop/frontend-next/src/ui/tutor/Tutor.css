@@ -2,6 +2,30 @@
    no new tokens; layout follows the conversation column's rhythm — the tutor
    is the window's page, not a sheet over one. */
 
+/* The tutor's pinned pane. It stacks with conversation panes — same slot,
+   same visibility contract (data-off keeps it mounted but unseen) — but it is
+   not a conversation pane: its own class keeps pane-scoped selectors (tests
+   and styles alike) from matching the tutor by accident. */
+.panes > .pane-tutor {
+  position: absolute; inset: 0; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column;
+}
+.pane-tutor[data-off] { visibility: hidden; pointer-events: none }
+
+/* The tutor's plans, listed in the session rail beside conversations: one
+   quiet line each, the quicknav rhythm. It lives here, not in the layered
+   studio sheet, because it is the tutor's own growth: the studio sheets are
+   held at their recorded length. */
+.studio-tutor-runs { display: grid; gap: 1px; padding: 0 4px; }
+.studio-tutor-label { margin-top: 8px; }
+.studio-tutor-run {
+  width: 100%; height: 30px; display: flex; align-items: center; gap: 7px;
+  padding: 0 7px; border: 0; border-radius: 6px; background: transparent;
+  color: var(--muted); font: 500 11px/1.4 var(--ui); text-align: left; cursor: pointer;
+}
+.studio-tutor-run:hover { color: var(--text); background: var(--overlay); }
+.studio-tutor-run-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .tut-surface {
   flex: 1;
   min-height: 0;

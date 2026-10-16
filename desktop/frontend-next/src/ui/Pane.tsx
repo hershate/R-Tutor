@@ -323,7 +323,9 @@ function PaneView({ port, rt, title, active, visible, sideHost, side, onFocus, o
     if (visible && workbench) setToggleFiles((n) => n + 1);
     else openChanges();
   }, [visible, workbench, openChanges]);
-  useOnBump(filesPulse, pressFiles);
+  // Replay: the window's Files controls sit outside this pane's lazy boundary,
+  // so the press can arrive before the pane has mounted (see useOnBump).
+  useOnBump(filesPulse, pressFiles, true);
   useEffect(() => { void loadChangedFilesPref(port); }, [port]);
   useEffect(() => { void loadFoldWorkPref(port); }, [port]);
   const foldWork = useFoldsTurnWork(port);

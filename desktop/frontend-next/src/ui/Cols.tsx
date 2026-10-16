@@ -1,11 +1,14 @@
-import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { lazy, Suspense, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { Gutter, RAIL } from "./Gutter";
 import { Nav } from "./Nav";
 import { Sidebar } from "./Sidebar";
-import { Pane, type PaneReport } from "./Pane";
 import { PaneTabs, type usePaneTabs } from "./PaneTabs";
+import type { PaneReport } from "./Pane";
+import { TutorSurface } from "./TutorSurface";
+import type { TutorView } from "./tutor/Tutor";
 import { feedbackEntryTab } from "./feedbackentry";
 import { t } from "../i18n";
+import { TUTOR_PANE } from "./activepane";
 import type { AccountState, AgentPort } from "../port/port";
 import type { HubPort, RuntimeView, TreeWorkspace } from "../port/hub";
 import type { RemoteHost } from "../port/remote";
@@ -20,13 +23,28 @@ import type { useSessionSwitch } from "./sessionswitch";
 import type { useLiveGrace } from "./useLiveGrace";
 import type { useViewed } from "./unread";
 import type { FeedbackTab } from "./Feedback";
+import type { TutorPlanSummary } from "../port/tutor";
 
-// The agent's page: the columns — navigation, sessions, panes — that made up
-// Reasonix's whole window before the tutor became the home surface. App still
-// owns the window (chrome, settings, the surface switch) and every hook that
-// feeds this tree; only the rendering moved, so the page behind the lazy
-// boundary behaves exactly as it did when it was inline.
-export interface ChatPageProps {
+// A chat pane's tree — transcript, composer, workbench — is the heaviest thing
+// the window can show, and the tutor is what it opens on. The pane's chunk is
+// fetched with the shell (the settings precedent), so opening a conversation is
+// never the network's turn, while the tutor's first paint parses none of it.
+const paneModule = import("./Pane").then(
+  (module) => ({ module, error: null as unknown }),
+  (error: unknown) => ({ module: null, error }),
+);
+const ChatPane = lazy(async () => {
+  const loaded = await paneModule;
+  if (loaded.error) throw loaded.error;
+  return { default: loaded.module!.Pane };
+});
+
+// The one window: navigation, sessions and panes, with the study tutor as a
+// pinned pane among them. App still owns the window — chrome, settings, every
+// hook that feeds this tree — and the tutor keeps its own view union; what
+// moved is the frame, so the rail, the session column and the pane strip are
+// the same controls on every pane instead of two isolated surfaces.
+export interface ColsProps {
   hub: HubPort;
   navRail: ReturnType<typeof useNavRail>;
   settings: string | boolean;
@@ -36,7 +54,6 @@ export interface ChatPageProps {
   openFind: () => void;
   setRail: Dispatch<SetStateAction<boolean>>;
   setFeedback: Dispatch<SetStateAction<FeedbackTab | null>>;
-  setSurface: (surface: "tutor" | "chat") => void;
   setClaimed: Dispatch<SetStateAction<boolean>>;
   setBrowser: Dispatch<SetStateAction<boolean>>;
   feedbackUnread: number;
@@ -93,20 +110,33 @@ export interface ChatPageProps {
   browserAsk: number;
   takeover: Record<string, number>;
   activePaneShown: boolean;
+  // The tutor pane's own state: its baseless port, the view it is on, the
+  // plans the rail lists beside chat sessions, and where a refusal lands.
+  tutorPort: AgentPort;
+  tutorView: TutorView;
+  onTutorView: (view: TutorView) => void;
+  tutorPlans: TutorPlanSummary[];
+  onOpenTutorPlan: (id: string) => void;
+  /** Leaves the tutor for a conversation — the header's chat exit. */
+  onChat: () => void;
+  onTutorError: (message: string) => void;
+  tutorNotice: ReactNode;
 }
 
-export function ChatPage(props: ChatPageProps) {
+export function Cols(props: ColsProps) {
   const {
     hub, navRail, settings, showPrefs, hidePrefs, openFiles, openFind, setRail, setFeedback,
-    setSurface, setClaimed, setBrowser, feedbackUnread, newSessionRoot, openPane, openRemotePane,
+    setClaimed, setBrowser, feedbackUnread, newSessionRoot, openPane, openRemotePane,
     fail, viewed, treeRead, tree, rail, runtimes, runs, active, activeWorkspace, liveIds,
     listedIds, pinnedSessions, togglePinnedSession, remotes, reloadRemotes, reloadRemoteTrees,
     readRemoteTree, reloadTree, paging, adder, sw, focusPane, closePanes, panePorts,
     archiveSession, renameSession, account, accountUnread, report, railW, onRailW, sessionTabs,
     tabs, manyRoots, dropPanes, onReport, refreshPanes, settingsPulse, findPulse, filesRequests,
     bar, needsProject, scheme, shownDockW, dockLimit, onDockW, browser, browserAsk, takeover,
-    activePaneShown,
+    activePaneShown, tutorPort, tutorView, onTutorView, tutorPlans, onOpenTutorPlan, onChat,
+    onTutorError, tutorNotice,
   } = props;
+  const tutorActive = active === TUTOR_PANE;
   return (
       <div className="cols">
         {navRail.drawn && (
@@ -117,7 +147,7 @@ export function ChatPage(props: ChatPageProps) {
             onHome={hidePrefs}
             onRail={() => setRail((v) => !v)}
             onFeedback={() => setFeedback(feedbackEntryTab(feedbackUnread))}
-            onTutor={() => setSurface("tutor")}
+            onTutor={() => focusPane(TUTOR_PANE)}
             onNew={() => {
               hidePrefs();
               void openPane({ root: newSessionRoot }).catch(fail);
@@ -163,7 +193,9 @@ export function ChatPage(props: ChatPageProps) {
           onSettings={showPrefs}
           onFiles={openFiles}
           onFeedback={(tab) => setFeedback(tab ?? "send")}
-          onTutor={() => setSurface("tutor")}
+          onTutor={() => focusPane(TUTOR_PANE)}
+          tutorPlans={tutorPlans}
+          onOpenTutorPlan={onOpenTutorPlan}
           feedbackUnread={feedbackUnread}
           onFind={openFind}
           onError={fail}
@@ -181,12 +213,15 @@ export function ChatPage(props: ChatPageProps) {
           />
           {/* One conversation on screen at a time. Side by side, two panes
               squeezed each other and a glance could not tell which composer
-              belonged to which run; the ones behind keep streaming either way. */}
-          {sessionTabs && tabs.length > 1 && (
+              belonged to which run; the ones behind keep streaming either way.
+              The tutor is the pinned first tab — always present, never closed —
+              so the strip shows as soon as a conversation joins it. */}
+          {sessionTabs && tabs.length > 0 && (
             <PaneTabs
               tabs={tabs}
               active={active}
               showRoot={manyRoots}
+              home={{ title: t("学习"), onFocus: () => focusPane(TUTOR_PANE) }}
               onFocus={focusPane}
               onClose={dropPanes}
               onRename={(rt, title, mode) => renameSession(rt.sessionPath ?? "", title, mode)}
@@ -194,51 +229,72 @@ export function ChatPage(props: ChatPageProps) {
           )}
 
           <div className="panes" aria-busy={sw.pending || undefined}>
+            <section
+              className="pane-tutor"
+              aria-label={t("学习导师")}
+              data-off={tutorActive ? undefined : ""}
+              aria-hidden={tutorActive ? undefined : true}
+              data-active={tutorActive ? "" : undefined}
+            >
+              <TutorSurface
+                port={tutorPort}
+                view={tutorView}
+                onGo={onTutorView}
+                onChat={onChat}
+                onSettings={() => showPrefs()}
+                onError={onTutorError}
+                notice={tutorActive ? tutorNotice : null}
+              />
+            </section>
             {runtimes.map((rt) => {
               const port = panePorts.get(rt.id);
               return port ? (
-                <Pane
+                <Suspense
                   key={`${rt.id}:${takeover[rt.id] ?? 0}`}
-                  rt={rt}
-                  port={port}
-                  title={tabs.find((tab) => tab.rt.id === rt.id)?.title ?? t("新会话")}
-                  active={rt.id === active}
-                  sideHost={null}
-                  side={false}
-                  onFocus={() => focusPane(rt.id)}
-                  visible={rt.id === active}
-                  onReport={onReport}
-                  onTurnDone={viewed.turnDone}
-                  // Panes, not just the tree: the first turn gives this pane a
-                  // session path, and until /runtimes reports it the pane still
-                  // looks blank — the next history row would take it over.
-                  onSessionChanged={refreshPanes}
-                  pulse={settingsPulse}
-                  findPulse={findPulse}
-                  filesPulse={filesRequests[rt.id] ?? 0}
-                  alert={rt.id === active ? bar : undefined}
-                  needsProject={needsProject}
-                  onOpenProject={() => {
-                    setRail(true);
-                    adder.add();
-                  }}
-                  onKeepHere={() => {
-                    localStorage.setItem("rx-claim", "off");
-                    setClaimed(true);
-                  }}
-                  onSettings={(section) => section ? showPrefs(section) : showPrefs()}
-                  onOpenSession={(path) => void openPane({ root: rt.root, sessionPath: path }).catch(fail)}
-                  theme={scheme}
-                  dockW={shownDockW}
-                  dockMax={dockLimit}
-                  onDockW={onDockW}
-                  manualBrowser={rt.id === active && browser}
-                  browserAsk={browserAsk}
-                  onManualBrowser={setBrowser}
-                />
+                  fallback={<div className="pane" data-active={rt.id === active ? "" : undefined} data-off={rt.id === active ? undefined : ""} aria-busy="true" />}
+                >
+                  <ChatPane
+                    rt={rt}
+                    port={port}
+                    title={tabs.find((tab) => tab.rt.id === rt.id)?.title ?? t("新会话")}
+                    active={rt.id === active}
+                    sideHost={null}
+                    side={false}
+                    onFocus={() => focusPane(rt.id)}
+                    visible={rt.id === active}
+                    onReport={onReport}
+                    onTurnDone={viewed.turnDone}
+                    // Panes, not just the tree: the first turn gives this pane a
+                    // session path, and until /runtimes reports it the pane still
+                    // looks blank — the next history row would take it over.
+                    onSessionChanged={refreshPanes}
+                    pulse={settingsPulse}
+                    findPulse={findPulse}
+                    filesPulse={filesRequests[rt.id] ?? 0}
+                    alert={rt.id === active ? bar : undefined}
+                    needsProject={needsProject}
+                    onOpenProject={() => {
+                      setRail(true);
+                      adder.add();
+                    }}
+                    onKeepHere={() => {
+                      localStorage.setItem("rx-claim", "off");
+                      setClaimed(true);
+                    }}
+                    onSettings={(section) => section ? showPrefs(section) : showPrefs()}
+                    onOpenSession={(path) => void openPane({ root: rt.root, sessionPath: path }).catch(fail)}
+                    theme={scheme}
+                    dockW={shownDockW}
+                    dockMax={dockLimit}
+                    onDockW={onDockW}
+                    manualBrowser={rt.id === active && browser}
+                    browserAsk={browserAsk}
+                    onManualBrowser={setBrowser}
+                  />
+                </Suspense>
               ) : null;
             })}
-            {runtimes.length === 0 && (
+            {runtimes.length === 0 && !tutorActive && (
               <div className="panes-empty">
                 <span className="mk" aria-hidden="true">
                   ⌘
