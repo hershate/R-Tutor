@@ -4,6 +4,7 @@ import { reason } from "../../i18n/kernel";
 import { LazyMarkdown } from "../LazyMarkdown";
 import type { AgentPort } from "../../port/port";
 import type { TutorKbChatRecord, TutorKbChatResult, TutorKbDoc, TutorKbParsedText } from "../../port/tutor";
+import * as engine from "./engine";
 import type { TutorView } from "./Tutor";
 
 // The knowledge base: a document library independent of plan sessions plus
@@ -185,7 +186,18 @@ export function Kb({ port, onGo, onError, openDoc }: Props) {
     try {
       const result = await port.tutorKbGenerate(selected);
       setSelected([]);
+      // The endpoint only seeds the session with the documents' parsed text;
+      // the run itself starts here, the ordinary generate flow, or the page
+      // would land on a session with no ledger entry and nothing running.
+      const titles = selected
+        .map((id) => (docs ?? []).find((d) => d.id === id)?.title)
+        .filter((title): title is string => !!title)
+        .slice(0, 5)
+        .map((title) => `《${title}》`)
+        .join("");
+      const goal = titles !== "" ? `基于所选知识库资料制定学习方案：${titles}` : "基于知识库资料制定学习方案";
       onGo({ k: "generate", sid: result.session_id });
+      void engine.startGenerate(port, result.session_id, goal);
     } catch (e) {
       onError(reason(e));
     } finally {
