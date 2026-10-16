@@ -4,6 +4,7 @@ import { reason } from "../../i18n/kernel";
 import { LazyMarkdown } from "../LazyMarkdown";
 import type { AgentPort } from "../../port/port";
 import type { TutorNote } from "../../port/tutor";
+import { useConfirm } from "./Confirm";
 
 // Free notes: list + editor with live preview, plus the portable ZIP
 // export/import that round-trips the note .md format.
@@ -20,6 +21,7 @@ export function Notes({ port, onError }: Props) {
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const { confirm, overlay } = useConfirm();
 
   const reload = () => {
     port.tutorNotes().then(setNotes).catch((e) => {
@@ -67,7 +69,7 @@ export function Notes({ port, onError }: Props) {
   };
 
   const remove = async (n: TutorNote) => {
-    if (!window.confirm(t("删除这条笔记？"))) return;
+    if (!(await confirm(t("删除这条笔记？")))) return;
     try {
       await port.tutorNoteDelete(n.id);
       if (openId === n.id) close();
@@ -150,6 +152,8 @@ export function Notes({ port, onError }: Props) {
           ))}
         </div>
       </div>
+
+      {overlay}
 
       {editing && (
         <div className="tut-card tut-notes-editor">

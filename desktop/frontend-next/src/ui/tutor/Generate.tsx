@@ -3,6 +3,7 @@ import { t } from "../../i18n";
 import { reason } from "../../i18n/kernel";
 import type { AgentPort } from "../../port/port";
 import * as engine from "./engine";
+import { useConfirm } from "./Confirm";
 import { useTasks } from "./Tutor";
 import type { TutorView } from "./Tutor";
 
@@ -20,6 +21,7 @@ export function Generate({ port, sid, onGo, onError }: Props) {
   const entry = list.find((e) => e.sessionId === sid);
   const [showPartial, setShowPartial] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const { confirm, overlay } = useConfirm();
 
   useEffect(() => {
     if (!entry || entry.phase !== "running") return;
@@ -46,6 +48,9 @@ export function Generate({ port, sid, onGo, onError }: Props) {
             {t("返回首页")}
           </button>
         </div>
+        {/* The ledger can drop the task while its own question is open; the
+            ask renders on this branch too so it still gets its answer. */}
+        {overlay}
       </div>
     );
   }
@@ -109,9 +114,9 @@ export function Generate({ port, sid, onGo, onError }: Props) {
               <button
                 type="button" data-action="tutor.cancel"
                 onClick={() => {
-                  if (window.confirm(t("取消后已产生的模型费用不会退回，确定取消？"))) {
-                    void engine.cancelTask(port, sid).catch(() => undefined);
-                  }
+                  void confirm(t("取消后已产生的模型费用不会退回，确定取消？")).then((ok) => {
+                    if (ok) void engine.cancelTask(port, sid).catch(() => undefined);
+                  });
                 }}
               >
                 {t("取消生成")}
@@ -150,6 +155,8 @@ export function Generate({ port, sid, onGo, onError }: Props) {
           </>
         )}
       </div>
+
+      {overlay}
     </div>
   );
 }

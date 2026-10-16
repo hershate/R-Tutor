@@ -5,6 +5,7 @@ import { LazyMarkdown } from "../LazyMarkdown";
 import type { AgentPort } from "../../port/port";
 import type { TutorKbChatRecord, TutorKbChatResult, TutorKbDoc, TutorKbParsedText } from "../../port/tutor";
 import * as engine from "./engine";
+import { useConfirm } from "./Confirm";
 import type { TutorView } from "./Tutor";
 
 // The knowledge base: a document library independent of plan sessions plus
@@ -42,6 +43,7 @@ export function Kb({ port, onGo, onError, openDoc }: Props) {
   const [urlField, setUrlField] = useState("");
   const [busy, setBusy] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const { confirm, overlay } = useConfirm();
 
   useEffect(() => {
     setBusy(true);
@@ -144,7 +146,7 @@ export function Kb({ port, onGo, onError, openDoc }: Props) {
   };
 
   const remove = async (doc: TutorKbDoc) => {
-    if (!window.confirm(t("删除文档「{title}」？", { title: doc.title }))) return;
+    if (!(await confirm(t("删除文档「{title}」？", { title: doc.title })))) return;
     try {
       await port.tutorKbDelete(doc.id);
       setSelected((ids) => ids.filter((id) => id !== doc.id));
@@ -339,6 +341,8 @@ export function Kb({ port, onGo, onError, openDoc }: Props) {
           {detail.status !== "parsed" && <p className="tut-dim">{t("确认并解析后，这里会展示提取的文本。")}</p>}
         </div>
       )}
+
+      {overlay}
     </div>
   );
 }

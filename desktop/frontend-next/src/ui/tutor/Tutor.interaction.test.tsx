@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "../testkit";
 import { MockPort } from "../../port/mock";
@@ -171,6 +171,113 @@ it("closing the note editor leaves, not turns into a blank new note", async () =
   // The editor is gone outright; open(null) used to re-open it as a new note.
   expect(screen.queryByPlaceholderText("正文（Markdown）")).toBeNull();
   expect(screen.queryByRole("button", { name: "保存" })).toBeNull();
+});
+
+// Deletion is asked on the page itself: the native confirm box cannot exist
+// in an embedded webview — it never shows, and the page waits on its own
+// call forever. Cancel keeps the row; only taking the question removes it.
+it("asks note deletion on a page overlay, and deletes only when taken", async () => {
+  const user = userEvent.setup();
+  const port = new MockPort() as unknown as AgentPort;
+  const del = vi.spyOn(port, "tutorNoteDelete");
+  const views: TutorView[] = [{ k: "notes" }];
+  const tree = (v: TutorView) => (
+    <Tutor port={port} view={v} onGo={go} onChat={() => undefined} onSettings={() => undefined} onError={() => undefined} />
+  );
+  let rerender: (v: TutorView) => void = () => undefined;
+  const go = (v: TutorView) => {
+    views[0] = v;
+    rerender(v);
+  };
+  const utils = render(tree(views[0]!));
+  rerender = (v) => utils.rerender(tree(v));
+
+  await user.click(await screen.findByRole("button", { name: "新建" }));
+  await user.type(await screen.findByPlaceholderText("标题"), "要删的笔记");
+  await user.click(screen.getByRole("button", { name: "保存" }));
+  const row = await screen.findByRole("button", { name: /要删的笔记/ });
+
+  await user.click(screen.getByRole("button", { name: "删除" }));
+  const ask = screen.getByRole("dialog");
+  expect(ask.textContent).toContain("删除这条笔记？");
+  await user.click(within(ask).getByRole("button", { name: "取消" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(row).toBeTruthy();
+  expect(del).not.toHaveBeenCalled();
+
+  await user.click(screen.getByRole("button", { name: "删除" }));
+  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "确认" }));
+  await waitFor(() => {
+    expect(del).toHaveBeenCalledTimes(1);
+  });
+  expect(await screen.findByText(/还没有笔记/)).toBeTruthy();
+});
+
+it("asks KB document deletion on a page overlay, and deletes only when taken", async () => {
+  const user = userEvent.setup();
+  const port = new MockPort() as unknown as AgentPort;
+  const del = vi.spyOn(port, "tutorKbDelete");
+  const views: TutorView[] = [{ k: "kb" }];
+  const tree = (v: TutorView) => (
+    <Tutor port={port} view={v} onGo={go} onChat={() => undefined} onSettings={() => undefined} onError={() => undefined} />
+  );
+  let rerender: (v: TutorView) => void = () => undefined;
+  const go = (v: TutorView) => {
+    views[0] = v;
+    rerender(v);
+  };
+  const utils = render(tree(views[0]!));
+  rerender = (v) => utils.rerender(tree(v));
+
+  await user.click(await screen.findByRole("button", { name: "添加文本" }));
+  await user.type(await screen.findByPlaceholderText("标题（可空，取正文首行）"), "Rust 手册");
+  await user.type(screen.getByPlaceholderText("粘贴文本内容"), "所有权是 Rust 的核心概念。");
+  await user.click(screen.getByRole("button", { name: "入库" }));
+  await screen.findByRole("button", { name: /Rust 手册/ });
+
+  await user.click(screen.getByRole("button", { name: "删除" }));
+  const ask = screen.getByRole("dialog");
+  expect(ask.textContent).toContain("删除文档「Rust 手册」？");
+  await user.click(within(ask).getByRole("button", { name: "取消" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.getByRole("button", { name: /Rust 手册/ })).toBeTruthy();
+  expect(del).not.toHaveBeenCalled();
+
+  await user.click(screen.getByRole("button", { name: "删除" }));
+  await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "确认" }));
+  await waitFor(() => {
+    expect(del).toHaveBeenCalledTimes(1);
+  });
+  expect(await screen.findByText(/知识库还是空的/)).toBeTruthy();
+});
+
+it("asks before cancelling a running generation, and cancels only when taken", async () => {
+  const user = userEvent.setup();
+  const port = new MockPort() as unknown as AgentPort;
+  const cancel = vi.spyOn(port, "tutorCancel");
+  const views: TutorView[] = [{ k: "home" }];
+  const tree = (v: TutorView) => (
+    <Tutor port={port} view={v} onGo={go} onChat={() => undefined} onSettings={() => undefined} onError={() => undefined} />
+  );
+  let rerender: (v: TutorView) => void = () => undefined;
+  const go = (v: TutorView) => {
+    views[0] = v;
+    rerender(v);
+  };
+  const utils = render(tree(views[0]!));
+  rerender = (v) => utils.rerender(tree(v));
+
+  await user.type(await screen.findByPlaceholderText(/用一段话描述你的学习目标/), "三个月掌握 React");
+  await user.click(screen.getByRole("button", { name: "制定学习方案" }));
+  await screen.findByText("正在生成你的学习方案");
+
+  await user.click(screen.getByRole("button", { name: "取消生成" }));
+  const ask = screen.getByRole("dialog");
+  expect(ask.textContent).toContain("取消后已产生的模型费用不会退回");
+  await user.click(within(ask).getByRole("button", { name: "确认" }));
+  await waitFor(() => {
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
 });
 
 it("shows the honest empty state for a session with no pending questions", async () => {

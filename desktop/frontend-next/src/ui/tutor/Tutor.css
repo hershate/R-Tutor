@@ -144,6 +144,28 @@
 .tut-chips { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 .tut-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .tut-acts a { color: inherit; font-size: 13px; }
+/* The confirm overlay: the page asking itself, in place of a native box an
+   embedded webview can never show. The veil is the page dimmed, the card is
+   the tutor's own surface — a question, not a window. */
+.tut-confirm-veil {
+  position: fixed; inset: 0; z-index: 70;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--page) 72%, transparent);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.tut-confirm {
+  width: min(400px, calc(100vw - 48px));
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow-float);
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+}
+.tut-confirm p { margin: 0; font-size: 13px; }
+.tut-confirm .tut-acts { justify-content: flex-end; }
+/* Every question it asks today takes something away, so the taking is said in
+   the ink the surface uses for harm. */
+.tut-confirm .tut-primary { color: var(--err-ink); }
+
 .tut-inline { background: none; border: none; cursor: pointer; font-size: 12px; padding: 0 0 0 8px; color: var(--muted); }
 .tut-file-btn { position: relative; overflow: hidden; font-size: 13px; }
 .tut-file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
