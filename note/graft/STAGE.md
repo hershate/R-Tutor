@@ -167,6 +167,24 @@ Checklist 全 ✅，Deep Tutor 语义逐条对位移植。架构与映射决策�
   内置浏览器实机八项（默认学习、方案行直达、钉签切换、聊天按钮、导轨
   学习导师、#chat/#tutor/裸地址、零错误横幅）
 
+**统一二期（2026-10-16，/goal「界面还是不统一」四答：双导航/风格/标签条默认/布局）**：
+
+- 学习面内导航（学习目标/我的方案/复习/笔记/知识库/用量）收进侧栏
+  「学习」分区（TUTOR_NAV 导出，Sidebar 渲染，aria-current 随
+  tutorView，点击=focusPane+setView），置于「会话」块之前
+- 学习面头部换聊天面同款 .chrome/.crumb/.thbtn 真词汇：同 class 同 CSS
+  即同观感，桌面端顺带获得标题栏拖拽区；tut-nav/tut-hd 样式删除
+- 面板标签条默认显示：prefs 判定 `!== "off"`（旧用户显式关不掉的保留
+  off），外观开关语义不变；session-tabs 套件改写为默认开
+- 代价：eager 576.8KB（+1.2，头部/导航换位）；vitest 548×4673 两轮全绿；
+  repolint 2693 零加宽；census 零新动作（tutor.nav 复用）
+- IAB 实机（内置浏览器，红线）：默认学习面+chrome 头；侧栏三段（学习/
+  学习方案/会话）；标签条默认两条（删键重载证默认）；复习入口三联动
+  （聚焦/切页/面包屑+aria-current）；聊天 thbtn 切面学习面保持挂载；零
+  errbar。IAB 三坑入记忆（见 browser 记忆文件）
+- 安装版同步重打包部署（electron-builder 假签名坑：手动 vendor signtool
+  /a /tr 补签后 robocopy /E 到 F:\Program Files\Reasonix Studio）
+
 ## 闸门口径（复核用）
 
 make lint（golangci 0 issues + repolint clean 2693 零加宽）；make check；tutor 全包

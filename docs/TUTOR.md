@@ -22,7 +22,11 @@ application:
 - One SPA is the whole interface. The agent chat — Reasonix's full surface —
   is a pane in the same window: the header's chat button (聊天) opens or
   focuses a conversation, and the rail's or the palette's entry brings the
-  study pane back. Its plans sit in the session column beside chat sessions.
+  study pane back.
+- The study pane's pages — goal through usage — and its plans sit in the
+  session column beside chat sessions, one column for both halves of the
+  window. The pane's header is the window's own chrome row, crumb and icon
+  buttons included.
 - An address can name either pane once: `#tutor` opens the study pane, `#chat`
   opens the chat pane last active; in the terminal, `/tutor` prints where the
   surface lives.
