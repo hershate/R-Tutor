@@ -55,24 +55,28 @@ export function QuizPanel({ port, pid, onError }: Props) {
     if (!selected) return;
     try {
       const verdict = await port.tutorQuizSubmit(q.id, pid, selected);
-      setVerdicts((v) => ({ ...v, [q.id]: verdict }));
-      maybeWriteProgress();
+      // The write-back reads this map, so it gets the one that includes the
+      // verdict that just landed — the state from this render is one behind.
+      const next = { ...verdicts, [q.id]: verdict };
+      setVerdicts(next);
+      maybeWriteProgress(next);
     } catch (e) {
       onError(reason(e));
     }
   };
 
   // Aggregate judged choice accuracy per node and write it back as one
-  // progress record per node.
-  const maybeWriteProgress = () => {
+  // progress record per node. Judged means the server answered — a selection
+  // is an intent, not a result.
+  const maybeWriteProgress = (current: Record<string, Verdict>) => {
     const choices = (items ?? []).filter((q) => q.type === "choice");
-    const judged = choices.filter((q) => verdicts[q.id] !== undefined || picked[q.id]);
+    const judged = choices.filter((q) => current[q.id] !== undefined);
     if (choices.length === 0 || judged.length < choices.length) return;
     const byNode = new Map<string, { hit: number; total: number }>();
     for (const q of choices) {
       const row = byNode.get(q.node_id) ?? { hit: 0, total: 0 };
       row.total += 1;
-      if (verdicts[q.id]?.correct === true) row.hit += 1;
+      if (current[q.id]?.correct === true) row.hit += 1;
       byNode.set(q.node_id, row);
     }
     for (const [nodeId, row] of byNode) {
@@ -139,6 +143,7 @@ export function QuizPanel({ port, pid, onError }: Props) {
                     <label key={j} className="tut-opt">
                       <input
                         type="radio" name={q.id} data-action="tutor.quiz-pick"
+                        disabled={verdict !== undefined}
                         checked={picked[q.id] === opt}
                         onChange={() => setPicked((p) => ({ ...p, [q.id]: opt }))}
                       />
