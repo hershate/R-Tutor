@@ -36,6 +36,15 @@ export function Notes({ port, onError }: Props) {
     setDirty(false);
   };
 
+  // open(null) is the new-note editor, not a closed one, so closing is its own
+  // reset: the editor leaves, and it takes its fields with it.
+  const close = () => {
+    setOpenId(null);
+    setTitle("");
+    setBody("");
+    setDirty(false);
+  };
+
   const save = async () => {
     if (busy) return;
     if (title.trim() === "" && body.trim() === "") {
@@ -61,7 +70,7 @@ export function Notes({ port, onError }: Props) {
     if (!window.confirm(t("删除这条笔记？"))) return;
     try {
       await port.tutorNoteDelete(n.id);
-      if (openId === n.id) open(null);
+      if (openId === n.id) close();
       reload();
     } catch (e) {
       onError(reason(e));
@@ -136,8 +145,8 @@ export function Notes({ port, onError }: Props) {
                 {n.title || t("无题")}
                 <span className="tut-dim"> · {new Date(n.updated_at).toLocaleDateString()}</span>
               </button>
-              <button type="button" className="tut-row-act" data-action="tutor.note-del" onClick={() => void remove(n)}>{t("删除")}</button>
-            </div>
+            <button type="button" className="tut-row-act" data-action="tutor.note-del" onClick={() => void remove(n)}>{t("删除")}</button>
+          </div>
           ))}
         </div>
       </div>
@@ -159,7 +168,7 @@ export function Notes({ port, onError }: Props) {
             <button type="button" className="tut-primary" data-action="tutor.note-save" disabled={busy} onClick={() => void save()}>
               {openId === "new" ? t("保存") : t("更新")}
             </button>
-            <button type="button" data-action="tutor.note-close" onClick={() => open(null)}>{t("关闭")}</button>
+            <button type="button" data-action="tutor.note-close" onClick={close}>{t("关闭")}</button>
             {dirty && <span className="tut-dim">{t("有未保存的修改")}</span>}
           </div>
         </div>

@@ -156,6 +156,23 @@ it("opens the notes page, creates one, and lists it", async () => {
   });
 });
 
+it("closing the note editor leaves, not turns into a blank new note", async () => {
+  const user = userEvent.setup();
+  const { go } = mounted();
+  go({ k: "notes" });
+  await user.click(await screen.findByRole("button", { name: "新建" }));
+  await user.type(await screen.findByPlaceholderText("标题"), "草稿");
+  await user.click(screen.getByRole("button", { name: "保存" }));
+  await waitFor(() => screen.getByRole("button", { name: /草稿/ }));
+
+  await user.click(screen.getByRole("button", { name: /草稿/ }));
+  expect(screen.getByRole("button", { name: "更新" })).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: "关闭" }));
+  // The editor is gone outright; open(null) used to re-open it as a new note.
+  expect(screen.queryByPlaceholderText("正文（Markdown）")).toBeNull();
+  expect(screen.queryByRole("button", { name: "保存" })).toBeNull();
+});
+
 it("shows the honest empty state for a session with no pending questions", async () => {
   const port = new MockPort() as unknown as AgentPort;
   const session = await port.tutorCreateSession("目标");
