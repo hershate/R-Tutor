@@ -13,17 +13,19 @@ The tutor turns material you choose and a learning goal into a staged study
 plan, then keeps the studying going: scheduled units, quizzes with a
 wrong-answer deck, spaced review, notes, and a searchable knowledge base.
 
-It is the app's home surface, not a page beside the agent: every window —
-Studio and `reasonix web` alike — opens on the tutor, and it is an HTTP
-namespace (`/tutor/*`) on the same loopback server every frontend uses. There
-is no separate tutor web application:
+It is the pane every window opens on, not a page beside the agent: Studio
+and `reasonix web` share one window — rail, session column, pane strip —
+with the tutor pinned first. It is an HTTP namespace (`/tutor/*`) on the
+same loopback server every frontend uses; there is no separate tutor web
+application:
 
-- The tutor surface is the interface, and the same SPA serves `reasonix web`.
-  The agent chat — Reasonix's full surface — is a page within it, opened from
-  the tutor header's chat button (聊天) and left again through the rail's or
-  the palette's tutor entry.
-- An address can name either surface once: `#tutor` opens the tutor, `#chat`
-  opens the chat; in the terminal, `/tutor` prints where the surface lives.
+- One SPA is the whole interface. The agent chat — Reasonix's full surface —
+  is a pane in the same window: the header's chat button (聊天) opens or
+  focuses a conversation, and the rail's or the palette's entry brings the
+  study pane back. Its plans sit in the session column beside chat sessions.
+- An address can name either pane once: `#tutor` opens the study pane, `#chat`
+  opens the chat pane last active; in the terminal, `/tutor` prints where the
+  surface lives.
 - The only other HTML the namespace emits are download artifacts (exports)
   and the read-only public share page.
 

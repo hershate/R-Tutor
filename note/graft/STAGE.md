@@ -144,6 +144,29 @@ Checklist 全 ✅，Deep Tutor 语义逐条对位移植。架构与映射决策�
 - 验证：tsc 0 / vitest 548×4673 全绿（零用例改动）/ CDP 复走 zh+chat 全绿
 - 有意不做：prefsnav（目录表，壳内多处读）；CSS 按面拆分（闸门读 app.css ?raw）
 
+**统一前端（2026-10-16，/goal 聊天面与学习面完全隔离 → 一个窗口，用户三答定形）**：
+
+- 形态：聊天壳收编学习（Nav 轨 + 会话栏 + 面板条常驻）；默认落学习；
+  侧栏「学习方案」行点击直达该方案视图（走 tutorPort 基座口）
+- 实现：ChatPage.tsx 删除；新 Cols.tsx 常驻壳；学习面 = `.pane-tutor`
+  钉住第一签（TUTOR_PANE，无关闭/改名/右键，「关其他」不含它）；聊天
+  Pane 仍随壳预取 + lazy；#chat → 恢复上次激活面板，其余默认学习；
+  reloadPanes 兜底：TUTOR 永有效、"" → 首面板、失效 → 首面板 ?? TUTOR
+- 竞态修复：Nav（eager）的 files 脉冲可先于懒 Pane 挂载到达 → useOnBump
+  加 replay 形参（挂载前到达的计数=最早请求），App 在 takeover 自增时清零
+  该面板 filesRequests（重绑不重放）
+- 坑：.pane 选择器撞学习面（测试的 textarea 查询误中）→ 学习面独立类；
+  测试间 sessionStorage rx-active-pane 串味 → testsetup 逐用例清；ZCode
+  内置浏览器 goto 的 fragment 是后置补写，#chat 冷启动后地址栏会残留
+  （应用侧一次性消费/清除经 location.reload 路径验证正确，非产品缺陷）；
+  浏览器测试一律用 ZCode 内置浏览器（用户红线，勿再开外部 Edge）
+- 代价：eager JS 488.3→575.6KB（+17.9%，gzip 152.8→178.2），对原始基线
+  仍 -56.0%；见 note/report/perf/README.md 后记
+- 验证：tsc 0 / vitest 548×4673 全绿 / build+census / repolint 2693 零加宽
+  （学习方案 CSS 放 Tutor.css，studio.css 撑回闸内）/ make lint 0 issues /
+  内置浏览器实机八项（默认学习、方案行直达、钉签切换、聊天按钮、导轨
+  学习导师、#chat/#tutor/裸地址、零错误横幅）
+
 ## 闸门口径（复核用）
 
 make lint（golangci 0 issues + repolint clean 2693 零加宽）；make check；tutor 全包
