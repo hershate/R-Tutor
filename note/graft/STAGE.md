@@ -185,6 +185,40 @@ Checklist 全 ✅，Deep Tutor 语义逐条对位移植。架构与映射决策�
 - 安装版同步重打包部署（electron-builder 假签名坑：手动 vendor signtool
   /a /tr 补签后 robocopy /E 到 F:\Program Files\Reasonix Studio）
 
+**前端穷举审计（2026-10-16，/goal 穷举所有交互、坏逻辑立刻修；内置浏览器红线）**：
+
+- 前端四处：QuizPanel 判分回写读陈旧 verdicts 且把已选未判计入（改为
+  next-map 显式传入 + 主测验判后锁选项）；Review 错题模式 quizOffset 钳 0
+  重复首题（mode 感知 quizAt）；Kb「用所选生成方案」只跳视图不起引擎
+  （内核只播种，现补 engine.startGenerate 带文档名目标）；Home 步骤序号
+  0 基与热力图未来日 title「-1 分钟」
+- PlanDetail 白屏：降级方案 knowledge_map.nodes/schedule/topics 是 Go nil
+  切片 → JSON null，页面 .length 崩整树（?? [] 兜底 + 回归测试）
+- 内核 clarify 死循环：execUnderstandIntent 只传 TimeFields，Answers 不随
+  行 → 已答轮 ValidateIntent 仍 needs_clarify 重问（args.Answers 复制；
+  pipeline_test 改生产形状先红后绿）
+- 零运行时学习面 503：导师路由只挂运行时 mux，routeDefault 无运行时即
+  拒，关最后一个聊天面板学习面全灭。tutorShared 本就是进程级共享 →
+  hub 持 tutorSrv 空壳 Server 把导师路由挂 hub mux（hub_test 回归；实机
+  关 r1 后 /tutor/* 全 200、/status 仍 503、整页刷新学习面完整）
+- 既有闸门破损补齐：14ad818e2 加的 tutor.kb_export_empty 一直缺双语文案
+  （serve parity 测试红）→ kernel.ts + en_kernel.ts 补
+- IAB 实机：两轮完整生成（表单发起 + 知识库所选发起）经 clarify 强推
+  落库；方案六标签页 + 降级渲染；测验生成/参考答案；学习中心打卡回写
+  实涨；笔记增改查；搜索三分类命中与跳转；用量；壳层（聊天按钮、钉签
+  切换/关闭、#chat/#tutor 入口一次性消费、侧栏 aria-current、零运行时
+  重载）；重新生成出 v2；全程零 errbar。IAB 工作法：开机动画 canvas
+  遮罩（rAF 冻结不退场）evaluate 移除；Playwright click 的稳定性检查因
+  rAF 停转必超时 → locator.evaluate(el.click)；受控输入用原生 setter
+  派 input 事件
+- 闸门：tsc 0 / vitest 548×4677 / build+census 一致 / tutor -race 23.9s /
+  serve 全量仅上述 parity 一红（已修）/ make lint 0 / make check 2693
+  零加宽（三段超 essay 预算注释收紧至 3 行）
+- 记录为非缺陷：用量「0 次生成」＝mock 零成本不计账（service.go 仅
+  totalCost>0 记账的成本账本设计）；加载后改 hash 不响应＝入口一次性
+  消费设计；GET /tutor/progress 非路由，routeDefault 对未知路径 503 为
+  既有行为；release_unit_test.go 在 HEAD 即 gofmt 不齐（非本轮引入）
+
 ## 闸门口径（复核用）
 
 make lint（golangci 0 issues + repolint clean 2693 零加宽）；make check；tutor 全包
