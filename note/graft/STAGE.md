@@ -156,10 +156,10 @@ Checklist 全 ✅，Deep Tutor 语义逐条对位移植。架构与映射决策�
   加 replay 形参（挂载前到达的计数=最早请求），App 在 takeover 自增时清零
   该面板 filesRequests（重绑不重放）
 - 坑：.pane 选择器撞学习面（测试的 textarea 查询误中）→ 学习面独立类；
-  测试间 sessionStorage rx-active-pane 串味 → testsetup 逐用例清；ZCode
-  内置浏览器 goto 的 fragment 是后置补写，#chat 冷启动后地址栏会残留
-  （应用侧一次性消费/清除经 location.reload 路径验证正确，非产品缺陷）；
-  浏览器测试一律用 ZCode 内置浏览器（用户红线，勿再开外部 Edge）
+  测试间 sessionStorage rx-active-pane 串味 → testsetup 逐用例清
+- 坑：ZCode 内置浏览器 goto 的 fragment 后置补写，#chat 冷启动后地址栏
+  会残留（应用侧一次性消费/清除经 location.reload 路径验证正确，非缺陷）
+- 红线：浏览器测试一律 ZCode 内置浏览器，勿开外部 Edge（用户两次明示）
 - 代价：eager JS 488.3→575.6KB（+17.9%，gzip 152.8→178.2），对原始基线
   仍 -56.0%；见 note/report/perf/README.md 后记
 - 验证：tsc 0 / vitest 548×4673 全绿 / build+census / repolint 2693 零加宽
