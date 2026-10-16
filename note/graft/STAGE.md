@@ -207,10 +207,10 @@ Checklist 全 ✅，Deep Tutor 语义逐条对位移植。架构与映射决策�
   落库；方案六标签页 + 降级渲染；测验生成/参考答案；学习中心打卡回写
   实涨；笔记增改查；搜索三分类命中与跳转；用量；壳层（聊天按钮、钉签
   切换/关闭、#chat/#tutor 入口一次性消费、侧栏 aria-current、零运行时
-  重载）；重新生成出 v2；全程零 errbar。IAB 工作法：开机动画 canvas
-  遮罩（rAF 冻结不退场）evaluate 移除；Playwright click 的稳定性检查因
-  rAF 停转必超时 → locator.evaluate(el.click)；受控输入用原生 setter
-  派 input 事件
+  重载）；重新生成出 v2；全程零 errbar
+- IAB 工作法（rAF 停转连带）：开机动画 canvas 遮罩 evaluate 移除；
+  Playwright click 的稳定性检查必超时 → locator.evaluate(el.click)；
+  受控输入用原生 setter 派 input 事件
 - 闸门：tsc 0 / vitest 548×4677 / build+census 一致 / tutor -race 23.9s /
   serve 全量仅上述 parity 一红（已修）/ make lint 0 / make check 2693
   零加宽（三段超 essay 预算注释收紧至 3 行）
@@ -218,6 +218,34 @@ Checklist 全 ✅，Deep Tutor 语义逐条对位移植。架构与映射决策�
   totalCost>0 记账的成本账本设计）；加载后改 hash 不响应＝入口一次性
   消费设计；GET /tutor/progress 非路由，routeDefault 对未知路径 503 为
   既有行为；release_unit_test.go 在 HEAD 即 gofmt 不齐（非本轮引入）
+
+**弹窗根除与揭幕看门狗（2026-10-16 深夜，/goal 去弹窗+排查一直加载；内置浏览器红线）**：
+
+- 「一直加载不出来」两根因：① 三处 window.confirm（KB 删文档/笔记删除/
+  取消生成）在内置浏览器里原生对话框无法显示，JS 线程阻塞在自己调用上
+  ——上轮两次「页面冻结」即此（KB 删除、误点笔记删除）；② boot 编舞全在
+  首帧 rAF 内启动，rAF 不来 intro.held 永不 resolve，arrive() 对 held 又
+  无兜底且再设一道裸 rAF 闸，加载屏永盖页面
+- 修一（弹窗→覆盖层）：useConfirm 页内覆盖层（body portal + Escape +
+  焦点落在拒绝钮 + 卸载补答 false），三调用点换装，回归测试三条（取消
+  保行/确认才删/生成取消）；文案全复用既有双语键，零新目录条目
+- 修二（boot 看门狗）：intro 首帧 700ms 看门狗走既有 skip 路径落定字标；
+  arrive() 帧等待与 400ms 兜底竞速；calm 分支同样受看门狗保护
+- 笔记关闭修复入库：close 不再经 open(null) 变成空白新建表单（3e6a8b631）
+- 实机（覆盖层与揭幕）：boot 自动揭幕（无需手工移除 #boot）；KB 删文档
+  覆盖层两路 + 服务端 documents:[]；笔记删除两路 + 服务端 []；生成取消
+  费用提示覆盖层
+- 实机（数据流）：添加网页成功（example.com 抓取解析 174 字）与内网地址
+  拒绝（SSRF 防护正确）；导出 ZIP 200 且 zip 含 index.md；导出 Markdown；
+  只读分享建/链接页渲染/撤销后 not-found 页
+- 事故红线补录：浏览器级 tab.reload() 在内置浏览器宿主内越界曾直接杀死
+  ZCode 进程——此后仅页面级 playwright 动作，禁 tab.* 控制类 API（记忆
+  已更新）
+- 记录为非缺陷：分享页无 cookie 401＝token 模式 host binding 设计
+  （tutor_share.go 注释明示），公开性靠无鉴权部署 + 192 位令牌不可猜
+- 闸门：tsc 0 / vitest 548 全绿（tutor 套 20/20）/ build+census 一致 /
+  make lint 0（顺带把上轮 STAGE 超宽 IAB 条目拆行）/ make check 2693
+  零加宽；提交 3e6a8b631 + 覆盖层 + 2b122ec85 + 本记录
 
 ## 闸门口径（复核用）
 
