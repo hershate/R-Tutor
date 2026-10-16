@@ -375,6 +375,22 @@ func TestHubServesThePageWithNoPaneOpen(t *testing.T) {
 	}
 }
 
+// The pinned study pane is the window's own surface, so closing the last
+// conversation cannot take its data with it: the tutor routes answer from the
+// hub with no runtime open, where a runtime's own routes (like /status) still
+// have no one to answer.
+func TestHubServesTheTutorRoutesWithNoPaneOpen(t *testing.T) {
+	t.Setenv("REASONIX_HOME", testenv.TempDir(t))
+	h := NewHub(HubOptions{})
+	defer h.Shutdown()
+	srv := httptest.NewServer(operatorHandler(h))
+	defer srv.Close()
+
+	if got := hubGet[[]json.RawMessage](t, srv, "/tutor/plans"); len(got) != 0 {
+		t.Fatalf("GET /tutor/plans with no pane = %d items, want an empty list", len(got))
+	}
+}
+
 // Past the gate the page comes back with no pane open; the gate itself still
 // decides who gets that far (TestPageIsBehindTheAuthGate).
 func TestHubServesThePageToAnAuthenticatedReloadWithNoPane(t *testing.T) {

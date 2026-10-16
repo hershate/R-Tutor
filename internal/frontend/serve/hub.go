@@ -71,6 +71,10 @@ type Hub struct {
 	// wallets is shared by every pane: opening a conversation builds a runtime,
 	// and a per-runtime cache would be cold on exactly the read a switch waits on.
 	wallets *billing.Store
+	// tutorSrv serves the study surface from the hub itself: the tutor's store
+	// is the machine's, and its pinned pane stays up with every conversation
+	// closed. A Server shell is enough — handlers resolve the shared service.
+	tutorSrv *Server
 	// stance is the Ask/Auto/YOLO posture every pane this hub opens starts in.
 	stance  *approvalStance
 	changes *Broadcaster
@@ -229,6 +233,7 @@ func NewHub(opts HubOptions) *Hub {
 		opts:     opts,
 		auth:     newAuthGate(opts.Serve),
 		wallets:  &billing.Store{},
+		tutorSrv: &Server{},
 		stance:   &approvalStance{},
 		changes:  NewBroadcaster(),
 	}
@@ -557,6 +562,10 @@ func (h *Hub) Handler() http.Handler {
 	mux.HandleFunc(runtimePrefix+"{id}/", h.routeRuntime)
 	mux.HandleFunc("/host/settings/runtime/{runtime}/", h.localWorkspaceSettings)
 	mux.Handle("/host/settings/", http.StripPrefix("/host/settings", http.HandlerFunc(h.machineSettings)))
+	// The study pane is the window's own surface: its answers must not depend
+	// on a conversation being open, so the tutor routes sit beside the runtime
+	// mounts rather than behind whichever pane is first.
+	h.tutorSrv.registerTutorRoutes(mux)
 	mux.HandleFunc("/", h.routeDefault)
 	// What acts on the machine behind the window, or dials onward from it,
 	// stays the window's: a paired device reaches the rest.
